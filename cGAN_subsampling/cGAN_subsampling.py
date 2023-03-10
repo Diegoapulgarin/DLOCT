@@ -39,7 +39,52 @@ import pydot
 import graphviz 
 from keras.utils import plot_model
 import numpy as np
-#%%
+
+import tensorflow as tf
+import tensorflow.image as timg
+#%% custom loss function
+
+def ssim_loss(y_true, y_pred):
+    # Calculate SSIM between the reference and predicted images
+    y_true = tf.square(tf.abs(y_true[:,:,:,0]+1j*y_true[:,:,:,1]))
+    y_pred = tf.square(tf.abs(y_pred[:,:,:,0]+1j*y_pred[:,:,:,1]))
+    ssim = tf.reduce_mean(timg.ssim(y_true, y_pred, max_val=1))
+    # Calculate the difference from perfect SSIM (1.0)
+    diff = 1.0 - ssim
+    
+    return diff
+
+def power_spectrum_loss(y_true, y_pred):
+    # Compute the 2D Fourier transform of the reference and predicted images
+    y_true = y_true[:,:,:,0]+1j*y_true[:,:,:,1]
+    y_pred = y_pred[:,:,:,0]+1j*y_pred[:,:,:,1]
+    ref_fft = tf.signal.fft2d(tf.cast(y_true, tf.complex64))
+    pred_fft = tf.signal.fft2d(tf.cast(y_pred, tf.complex64))
+    
+    # Compute the power spectra by taking the absolute value squared
+    ref_power = tf.square(tf.abs(ref_fft))
+    pred_power = tf.square(tf.abs(pred_fft))
+    
+    # Calculate the difference between the power spectra
+    diff = tf.reduce_mean(tf.square(ref_power - pred_power))
+    
+    return diff
+
+def phase_std_loss(y_true, y_pred):
+    # Convert the reference and predicted images to complex64 data type
+    y_true = y_true[:,:,:,0]+1j*y_true[:,:,:,1]
+    y_pred = y_pred[:,:,:,0]+1j*y_pred[:,:,:,1]
+    ref_complex = tf.cast(y_true, tf.complex64)
+    pred_complex = tf.cast(y_pred, tf.complex64)
+    
+    # Compute the phase difference between the complex images
+    phase_diff = K.abs(K.angle(ref_complex) - K.angle(pred_complex))
+    
+    # Calculate the standard deviation of the phase difference
+    phase_std = tf.math.reduce_std(phase_diff)
+    
+    return phase_std
+#%% 
 
 def inverseLogScaleSlices(oldslices, slicesMax, slicesMin):
  
@@ -91,7 +136,7 @@ def define_discriminator(image_shape):
     model = Model([in_src_image, in_target_image], patch_out)
     # compile model
     opt = Adam(learning_rate=0.0000001)#Adam , beta_1=0.5 , RMSprop
-    model.compile(loss=['mean_squared_error', 'mae'], optimizer=opt, loss_weights=None)#'binary_crossentropy'
+    model.compile(loss=['binary_crossentropy'], optimizer=opt, loss_weights=None)#'binary_crossentropy'
     
     return model
     
