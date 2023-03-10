@@ -56,8 +56,8 @@ def ssim_loss(y_true, y_pred):
 
 def power_spectrum_loss(y_true, y_pred):
     # Compute the 2D Fourier transform of the reference and predicted images
-    y_true = y_true[:,:,:,0]+1j*y_true[:,:,:,1]
-    y_pred = y_pred[:,:,:,0]+1j*y_pred[:,:,:,1]
+    # y_true = y_true[:,:,:,0]+1j*y_true[:,:,:,1]
+    # y_pred = y_pred[:,:,:,0]+1j*y_pred[:,:,:,1]
     ref_fft = tf.signal.fft2d(tf.cast(y_true, tf.complex64))
     pred_fft = tf.signal.fft2d(tf.cast(y_pred, tf.complex64))
     
@@ -216,7 +216,7 @@ def define_gan(g_model, d_model, image_shape):
     model = Model(in_src, [dis_out, gen_out])
     # compile model
     opt = Adam(lr=0.0002, beta_1=0.5)
-    model.compile(loss=['mean_squared_error', 'mae'], optimizer=opt, loss_weights=[1,100])
+    model.compile(loss=power_spectrum_loss, optimizer=opt, loss_weights=None) # =['mean_squared_error', 'mae']
     return model
     
 # load and prepare training images
