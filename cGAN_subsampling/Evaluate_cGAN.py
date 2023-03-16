@@ -23,7 +23,7 @@ from ApplyOptimumFilter import ApplyOptimumFilter as OF
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
-%matplotlib
+# %matplotlib
 #%%
 
 #root=r'D:\DLOCT\Cgansub_260123'
@@ -257,9 +257,9 @@ print('ok')
 #%%
 
 z = 64
-plot = 10*np.log10(abs(tomDataOver[z,:,:,0] + 1j*tomDataOver[z,:,:,1])**2)
-plt.imshow((plot),cmap='gray',vmin=30, vmax=100)
-# %matplotlib
+# plot = 10*np.log10(abs(tomDataOver[z,:,:,0] + 1j*tomDataOver[z,:,:,1])**2)
+# plt.imshow((plot),cmap='gray',vmin=30, vmax=100)
+# # %matplotlib
 #%%
 plot = abs(tomData[z,:,:,0] + 1j*tomData[z,:,:,1])
 plotemp= MeanPowerSpectrumOver
@@ -290,9 +290,9 @@ tomDatap,tomIntDonw = OF(tomData, tomDataOver,z,vmin,vmax)
 
 #%%
 
-fig = plt.figure(30)
-ax = fig.add_subplot(111)
-dum = ax.imshow(10 * np.log10(tomIntDonw[z, :, :]), cmap='gray', vmin=vmin, vmax=vmax)
-#ax.set_aspect(2)
-ax.set_title('subsampled')
-fig.colorbar(dum)
+# fig = plt.figure(30)
+# ax = fig.add_subplot(111)
+# dum = ax.imshow(10 * np.log10(tomIntDonw[z, :, :]), cmap='gray', vmin=vmin, vmax=vmax)
+# #ax.set_aspect(2)
+# ax.set_title('subsampled')
+# fig.colorbar(dum)
