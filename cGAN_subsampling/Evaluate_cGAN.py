@@ -49,7 +49,7 @@ n_epochs = np.load(path+'\\n_epochs.npy')
 #%%
 customObjects = {'ownPhaseMetric': ownPhaseMetric,
                  'ownPhaseMetricCorrected': ownPhaseMetricCorrected}
-model = tf.keras.models.load_model(path+'\\Models\\model_016384.h5',custom_objects=customObjects)
+model = tf.keras.models.load_model(path+'\\Models\\model_081920.h5',custom_objects=customObjects)
 model.summary()
 import plotly.io as pio
 pio.templates.default = 'presentation'
@@ -296,3 +296,11 @@ tomDatap,tomIntDonw = OF(tomData, tomDataOver,z,vmin,vmax)
 # #ax.set_aspect(2)
 # ax.set_title('subsampled')
 # fig.colorbar(dum)
+fnametom2 = 'ExperimentalTomogram/ExperimentalROI_corrected5'
+fname2 = rootFolder + fnametom2
+
+#save in numpy file
+fnameReal = fname2 + '_DL_resampled_of.npy'
+fnameImag = fname2 + '_subsampled.npy'
+np.save(fnameReal, tomDatap)
+np.save(fnameImag, tomIntDonw)
