@@ -1,6 +1,8 @@
 
 import numpy as np
-import matplotlib.pyplot as plt
+
+
+
 
 def sliding_window(image, window_size, step_size):
     """
@@ -128,3 +130,43 @@ def calculate_oct_snr(tom):
     snr = signal / noise
 
     return snr
+
+def simple_sliding_window(tomData,tomShape,slidingYSize,slidingXSize,strideY,strideX):
+    slices =[]
+    for z in range(tomShape[0]):
+            slidingYPos = 0
+            # print(' z dimension :', z)
+            while slidingYPos + slidingYSize <= tomShape[2]:
+                slidingXPos = 0
+                # print('\t sliding pos y :', slidingYPos)
+                while slidingXPos + slidingXSize <= tomShape[1]:
+                    # print('\t\t sliding pos x :', slidingXPos)
+                    tomSlice = tomData[z, slidingXPos: slidingXPos + slidingXSize,
+                                       slidingYPos:slidingYPos + slidingYSize, :]
+                    slices.append(tomSlice)
+                    slidingXPos = slidingXPos + strideX
+                slidingYPos = slidingYPos + strideY
+    slices = np.array(slices)
+    return slices
+
+def simple_inv_sliding_window(slices, tomShape, slidingYSize, slidingXSize, strideY, strideX):
+    tomShapex = tomShape[1]
+    tomShapey = tomShape[2]
+    tomShapez = tomShape[0]
+    tomShapec = tomShape[3]
+    tomDataOver = np.zeros((tomShapez, tomShapex, tomShapey, tomShapec))
+    slicesOver= slices
+    sliceid = 0
+    for z in range(tomShapez):
+        slidingYPos = 0
+        while slidingYPos + slidingYSize <= tomShapey:
+            slidingXPos = 0
+            while slidingXPos + slidingXSize <= tomShapex:
+                tomSliceOver = slicesOver[sliceid]
+                tomDataOver[z, slidingXPos: slidingXPos + slidingXSize,
+                            slidingYPos:slidingYPos + slidingYSize, :] = tomSliceOver
+                slidingXPos = slidingXPos + strideX
+                sliceid = sliceid + 1
+            slidingYPos = slidingYPos + strideY
+    return tomDataOver
+

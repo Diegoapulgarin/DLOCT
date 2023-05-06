@@ -1,8 +1,7 @@
 # %%
-from os.path import join
+
 # Custom imports
-import sys
-# sys.path.append(r'C:\Users\labfisica\Documents\OCT_Advanced_Postprocessing\Analysis\DLOCT\TrainingModels')
+
 from Utils import logScaleSlices, inverseLogScaleSlices, downSampleSlices
 from Metrics import ownPhaseMetric, ownPhaseMetricCorrected
 from Deep_Utils import sliding_window, inv_sliding_window
@@ -10,15 +9,17 @@ import numpy as np
 import tensorflow as tf
 # %%
 
-path = '/home/dapulgaris/models'
+#path = '/home/dapulgaris/models' #apolo
+path = '/home/dapulgaris/models' #own pc
 customObjects = {'ownPhaseMetric': ownPhaseMetric,
                  'ownPhaseMetricCorrected': ownPhaseMetricCorrected}
 model = tf.keras.models.load_model(path+'\\Models\\model_081920.h5',custom_objects=customObjects)
 
 # %%
 """ Load tomograms"""
-rootFolder = '/home/dapulgaris/Data/' # porcine cornea
-fnameTom = '[p.SHARP][s.Eye2a][10-09-2019_13-14-42]/[p.SHARP][s.Eye2a][10-09-2019_13-14-42]_TomInt_z=(295..880)_x=(65..960)_y=(1..960)' # fovea
+rootFolder = '/home/dapulgaris/Data/' # apolo
+#rootFolder = r'D:\DLOCT\TomogramsDataAcquisition\Fovea\No_motion_corrected' # own pc
+fnameTom = '//[p.SHARP][s.Eye2a][10-09-2019_13-14-42]_TomInt_z=(295..880)_x=(65..960)_y=(1..960)' # fovea
 tomShape = [(586,896,960,2,2)]# porcine cornea
 # %%
 name = 'Experimental'
@@ -75,4 +76,4 @@ for b in range(number_planes):
 tomDataOver = np.array(tomDataOver)
 del bslicei,bslicer,bslice
 
-np.save('fovea_z_0_100_y_2',tomDataOver)
+np.save('/home/dapulgaris/data/tomDataOver.npy',tomDataOver)
