@@ -123,7 +123,7 @@ axs[2].set_axis_off()
 # %%
 logslicesOver = np.array(model.predict(logslicesUnder, batch_size=8), dtype='float64')
 slicesOver = inverseLogScaleSlices(logslicesOver, slicesMax, slicesMin)
-slicesUnder=downSampleSlices(slices)
+# slicesUnder=downSampleSlices(slices)
 
 # %%
 z = 2400
@@ -184,7 +184,8 @@ for b in range(number_planes):
     tomDataOver.append(bslice)
 tomDataOver = np.array(tomDataOver)
 del bslicei,bslicer,bslice
-z = 15
+#%%
+z = 256
 plt.imshow(10*np.log10(abs(tomDataOver[z,:,:,0]+1j*tomDataOver[z,:,:,1]**2)))
 
 
