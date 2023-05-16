@@ -4,7 +4,7 @@
 
 from Utils import logScaleSlices, inverseLogScaleSlices, downSampleSlices
 from Metrics import ownPhaseMetric, ownPhaseMetricCorrected
-from Deep_Utils import sliding_window, inv_sliding_window
+from Deep_Utils import simple_sliding_window, simple_inv_sliding_window
 import numpy as np
 import tensorflow as tf
 # %%
@@ -22,7 +22,6 @@ rootFolder = '/home/dapulgaris/Data/' # apolo
 fnameTom = '//[p.SHARP][s.Eye2a][10-09-2019_13-14-42]_TomInt_z=(295..880)_x=(65..960)_y=(1..960)' # fovea
 tomShape = [(586,896,960,2,2)]# porcine cornea
 # %%
-
 name = 'Experimental'
 fname = rootFolder + fnameTom
 # Names of all real and imag .bin files
@@ -37,44 +36,29 @@ tomImag = np.fromfile(fnameTomImag[0],'single')
 tomImag = tomImag.reshape(tomShape[0], order='F')  # reshape using
 
 tomData = np.stack((tomReal,tomImag), axis=5)
-tomData = np.sum(tomData,axis=3) # Z,X,Y,pol1-2,imag-real
 del tomImag, tomReal
-# %%
+tomData = np.sum(tomData,axis=3) # Z,X,Y,pol1-2,imag-real
+
+num_zeros = 64
+pad_width = ((0, 0), (0, 0), (0, num_zeros), (0, 0), (0, 0))
+tomData = np.pad(tomData, pad_width, mode='constant', constant_values=1)
 pol = 0
-n = 128
-s = 128
-window_size = (n,n)
-stride = (s,s)
-slices = []
-for b in range(len(tomData)):
-    i = b 
-    bslicei = sliding_window(tomData[i,:,:,pol,1],window_size,stride)
-    bslicer = sliding_window(tomData[i,:,:,pol,0],window_size,stride)
-    bslice = np.stack((bslicer,bslicei),axis=3)
-    slices.append(bslice)
-slices = np.array(slices)
-slices = np.reshape(slices,(slices.shape[0]*slices.shape[1],slices.shape[2],slices.shape[3],slices.shape[4]))
-tomData = np.stack((tomReal[:,:,:], tomImag[:,:,:]), axis=3)
-del bslicei,bslicer,bslice
+tomData = tomData[:,:,:,pol,:]
+
+# %%
+
+tomShape = np.shape(tomData)
+slidingYSize = 128
+slidingXSize = 128
+strideY = 128
+strideX = 128
+slices = simple_sliding_window(tomData,tomShape,slidingYSize,slidingXSize,strideY,strideX)
 
 # %%
 logslices, slicesMax, slicesMin = logScaleSlices(slices)
 logslicesUnder = downSampleSlices(logslices)
 logslicesOver = np.array(model.predict(logslicesUnder, batch_size=8), dtype='float32')
 slicesOver = inverseLogScaleSlices(logslicesOver, slicesMax, slicesMin)
-slicesUnder=downSampleSlices(slices)
-#%%
-original_size = (tomShape[0][1],tomShape[0][2])
-original_planes = tomData.shape[0]
-origslicesOver = np.reshape(slicesOver,(original_planes,int(slices.shape[0]/original_planes),slices.shape[1],slices.shape[2],2),)
-number_planes =  origslicesOver.shape[0]
-tomDataOver = []
-for b in range(number_planes):
-    bslicei,_,_ = inv_sliding_window(origslicesOver[b,:,:,:,1],window_size,original_size,stride)
-    bslicer,_,_ = inv_sliding_window(origslicesOver[b,:,:,:,0],window_size,original_size,stride)
-    bslice = np.stack((bslicer,bslicei),axis=2)
-    tomDataOver.append(bslice)
-tomDataOver = np.array(tomDataOver)
-del bslicei,bslicer,bslice
-
+tomDataOver = simple_inv_sliding_window(slicesOver, tomShape, slidingYSize, slidingXSize, strideY, strideX)
+tomDataOver = tomDataOver[:, :, :tomDataOver.shape[2]-num_zeros,:]
 np.save('/home/dapulgaris/data/tomDataOver.npy',tomDataOver)
