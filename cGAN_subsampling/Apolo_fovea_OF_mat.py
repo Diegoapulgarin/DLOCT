@@ -16,7 +16,7 @@ def gaussfit(binscenters, counts, p0):
     
     hist_fit = gauss(binscenters, *popt)
     return hist_fit, r_squared, popt
-path = '/home/dapulgaris/data/tomDataOver_Fovea_pol'
+path = '/home/dapulgaris/Data/tomDataOver_Fovea_pol'
 ext = '.npy'
 pol = ['1','2']
 tomDataOverOf = []
