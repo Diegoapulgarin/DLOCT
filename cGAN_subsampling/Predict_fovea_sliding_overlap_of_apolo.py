@@ -4,7 +4,7 @@
 
 from Utils import logScaleSlices, inverseLogScaleSlices, downSampleSlices
 from Metrics import ownPhaseMetric, ownPhaseMetricCorrected
-from Deep_Utils import simple_sliding_window, simple_inv_sliding_window
+from Deep_Utils import sliding_window,inv_sliding_window
 import numpy as np
 import tensorflow as tf
 from scipy.io import savemat
@@ -70,13 +70,35 @@ for i in pol:
     slidingXSize = 128
     strideY = 128
     strideX = 128
-    slices = simple_sliding_window(tomData,tomShape,slidingYSize,slidingXSize,strideY,strideX)
+    window_size = (slidingXSize,slidingYSize)
+    step_size = (strideX,strideY)
+
+    slices = []
+    for i in range(len(tomDatas)):
+        bslicei = sliding_window(tomDatas[i,:,:,0],window_size,step_size)
+        bslicer = sliding_window(tomDatas[i,:,:,1],window_size,step_size)
+        bslice = np.stack((bslicer,bslicei),axis=3)
+        slices.append(bslice)
+    slices = np.array(slices)
+    slices = np.reshape(slices,(slices.shape[0]*slices.shape[1],slices.shape[2],slices.shape[3],slices.shape[4]))
+    
     print(np.shape(slices))
     logslices, slicesMax, slicesMin = logScaleSlices(slices)
     logslicesUnder = downSampleSlices(logslices)
     logslicesOver = np.array(model.predict(logslicesUnder, batch_size=8), dtype='float32')
     slicesOver = inverseLogScaleSlices(logslicesOver, slicesMax, slicesMin)
-    tomDataOver = simple_inv_sliding_window(slicesOver, tomShape, slidingYSize, slidingXSize, strideY, strideX)
+
+    original_size = (tomDatas.shape[1],tomDatas.shape[2])
+    original_planes = tomDatas.shape[0]
+    origslicesOver = np.reshape(slices,(original_planes,int(slices.shape[0]/original_planes),slices.shape[1],slices.shape[2],2),)
+    number_planes =  origslicesOver.shape[0]
+    tomDataOver = []
+    for b in range(number_planes):
+        bslicei,_,_ = inv_sliding_window(origslicesOver[b,:,:,:,1],window_size,original_size,step_size)
+        bslicer,_,_ = inv_sliding_window(origslicesOver[b,:,:,:,0],window_size,original_size,step_size)
+        bslice = np.stack((bslicer,bslicei),axis=2)
+        tomDataOver.append(bslice)
+    tomDataOver = np.array(tomDataOver)
     tomDataOver = tomDataOver[:, :, :tomDataOver.shape[2]-num_zeros,:]
     datatoprocess = tomDataOver
     dim = 1
