@@ -27,5 +27,14 @@ for b in range(number_planes):
     bslice = np.stack((bslicer,bslicei),axis=2)
     tomDataOver.append(bslice)
 tomDataOver = np.array(tomDataOver)
+
+#%%
+tom = []
+for i in range(3):
+    tom.append(tomData)
+tom = np.array(tom)
+tom = np.transpose(tom, (1, 2, 3, 4, 0))
+#%%
+
 fig = px.imshow(tomDataOver[0,:,:,0],color_continuous_scale='gray')
 fig.show()

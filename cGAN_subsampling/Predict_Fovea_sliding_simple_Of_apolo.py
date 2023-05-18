@@ -121,5 +121,8 @@ for i in pol:
     tomDataOverOf.append(tomDataP)
 
 savepath = rootFolder + 'tomDataOver.mat'
-tomDataOverOf = abs(np.array(tomDataOverOf))**2
+tomDataOverOf = np.array(tomDataOverOf)
+print(np.shape(tomDataOverOf))
+tomDataOverOf = abs(np.transpose(tomDataOverOf, (1, 2, 3, 0)))**2
+print(np.shape(tomDataOverOf))
 savemat(savepath, {'tomDataOver': tomDataOverOf.astype(np.float64)})
