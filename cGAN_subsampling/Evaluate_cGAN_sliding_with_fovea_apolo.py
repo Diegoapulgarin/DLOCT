@@ -10,7 +10,7 @@ import tensorflow as tf
 # %%
 
 #path = '/home/dapulgaris/models' #apolo
-path = '/home/dapulgaris/models' #own pc
+path = '/home/dapulgaris/Models' #own pc
 customObjects = {'ownPhaseMetric': ownPhaseMetric,
                  'ownPhaseMetricCorrected': ownPhaseMetricCorrected}
 model = tf.keras.models.load_model(path+'\\Models\\model_081920.h5',custom_objects=customObjects)
@@ -77,4 +77,4 @@ for b in range(number_planes):
 tomDataOver = np.array(tomDataOver)
 del bslicei,bslicer,bslice
 
-np.save('/home/dapulgaris/data/tomDataOver.npy',tomDataOver)
+np.save('/home/dapulgaris/Data/tomDataOver.npy',tomDataOver)
