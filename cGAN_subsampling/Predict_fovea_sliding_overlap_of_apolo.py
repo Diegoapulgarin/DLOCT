@@ -74,23 +74,27 @@ for i in pol:
     step_size = (strideX,strideY)
 
     slices = []
-    for i in range(len(tomDatas)):
-        bslicei = sliding_window(tomDatas[i,:,:,0],window_size,step_size)
-        bslicer = sliding_window(tomDatas[i,:,:,1],window_size,step_size)
+    for i in range(len(tomData)):
+        bslicei = sliding_window(tomData[i,:,:,0],window_size,step_size)
+        bslicer = sliding_window(tomData[i,:,:,1],window_size,step_size)
         bslice = np.stack((bslicer,bslicei),axis=3)
         slices.append(bslice)
     slices = np.array(slices)
     slices = np.reshape(slices,(slices.shape[0]*slices.shape[1],slices.shape[2],slices.shape[3],slices.shape[4]))
-    
+    del tomData
+
     print(np.shape(slices))
     logslices, slicesMax, slicesMin = logScaleSlices(slices)
+    del slices
     logslicesUnder = downSampleSlices(logslices)
+    del logslices
     logslicesOver = np.array(model.predict(logslicesUnder, batch_size=8), dtype='float32')
     slicesOver = inverseLogScaleSlices(logslicesOver, slicesMax, slicesMin)
+    del logslicesOver, logslicesUnder
 
     original_size = (tomDatas.shape[1],tomDatas.shape[2])
     original_planes = tomDatas.shape[0]
-    origslicesOver = np.reshape(slices,(original_planes,int(slices.shape[0]/original_planes),slices.shape[1],slices.shape[2],2),)
+    origslicesOver = np.reshape(slicesOver,(original_planes,int(slicesOver.shape[0]/original_planes),slicesOver.shape[1],slicesOver.shape[2],2),)
     number_planes =  origslicesOver.shape[0]
     tomDataOver = []
     for b in range(number_planes):

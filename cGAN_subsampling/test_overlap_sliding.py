@@ -3,7 +3,7 @@ from Deep_Utils import sliding_window, inv_sliding_window
 import numpy as np
 import plotly.express as px
 #%%
-tomData = np.ones((1,896,1024,2))
+tomData = np.ones((2,896,1024,2))
 n = 128
 window_size = (n,n)
 step_size = (n,n)
@@ -13,7 +13,7 @@ for i in range(len(tomData)):
     bslicer = sliding_window(tomData[i,:,:,1],window_size,step_size)
     bslice = np.stack((bslicer,bslicei),axis=3)
     slices.append(bslice)
-slices = np.array(slices)
+slices =np.array(slices)
 slices = np.reshape(slices,(slices.shape[0]*slices.shape[1],slices.shape[2],slices.shape[3],slices.shape[4]))
 #%%
 original_size = (tomData.shape[1],tomData.shape[2])
