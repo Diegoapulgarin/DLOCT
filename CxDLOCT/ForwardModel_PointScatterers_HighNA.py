@@ -1,4 +1,5 @@
-def ForwardModel_PointScatterers_HighNA(amp, z, x, k_vect, xi, alpha, z_fp, z_ref, max_batch_size=None):
+import numpy as np
+def HighNA(amp, z, x, k_vect, xi, alpha, z_fp, z_ref, max_batch_size=None):
     # Number of points
     n_points = z.shape[2]
     

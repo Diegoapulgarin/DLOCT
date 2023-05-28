@@ -2,7 +2,7 @@ import numpy as np
 from scipy.ndimage import uniform_filter1d
 
 
-def CreateLayeredSample(layerPrcts, layerBackScat, layerScat, layersPointSources,
+def create_Layered_Sample(layerPrcts, layerBackScat, layerScat, layersPointSources,
                           nPointSource, objRange, zStart, sampling, layerVar,
                           varType, maxBatchSize=None):
     if maxBatchSize is None:

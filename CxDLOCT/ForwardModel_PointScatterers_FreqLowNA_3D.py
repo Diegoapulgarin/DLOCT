@@ -1,4 +1,6 @@
-def ForwardModel_PointScatterers_FreqLowNA_3D(amp, z, x, y, k_vect, k, xi_x, xi_y, alpha, z_fp, z_ref, max_batch_size=None):
+import numpy as np
+
+def LowNA_3D(amp, z, x, y, k_vect, k, xi_x, xi_y, alpha, z_fp, z_ref, max_batch_size=None):
     # Beam waist diameter
     beam_waist_diam = 2 * alpha / k
     # Raylight range
