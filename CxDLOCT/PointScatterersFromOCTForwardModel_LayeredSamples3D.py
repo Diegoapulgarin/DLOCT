@@ -13,8 +13,8 @@ import time
 varType = 'float32'
 # Parámetros de la simulación
 # Número de puntos del tomograma
-nZ = 512  # axial, número de píxeles por línea A, teniendo en cuenta el relleno con ceros
-nX = 256 + 32  # eje de exploración rápida, número de líneas A por exploración B
+nZ = 32  # axial, número de píxeles por línea A, teniendo en cuenta el relleno con ceros
+nX = 32 + 32  # eje de exploración rápida, número de líneas A por exploración B
 nY = 1  # eje de exploración lenta, número de exploraciones B por tomograma
 nK = 400  # Número de muestras, <= nZ, la diferencia es el relleno con ceros
 xNyquistOversampling = 1  # Factor de muestreo del galvanómetro. 1 -> Nyquist
@@ -131,13 +131,14 @@ for i in range(1, nY):
     objSuscep = np.concatenate((objSuscep, np.expand_dims(objSuscep[:, :, 0], axis=2)), axis=2)
 #%%
 # Forward Model
-modelISAM = False
+modelISAM = True
 start_time = time.time()
 
 # Prepare an empty array for fringes
 fringes1 = np.zeros((nK, nX, nY), dtype=varType)
 
 if modelISAM:
+    print('High NA')
     for thisScan in range(nX):
         # Current beam position
         thisBeamPosX = xVect[thisScan]
@@ -148,6 +149,7 @@ if modelISAM:
             kVect, freqXVect, alpha, focalPlane, zRef)
 else:
     # Low NA Model
+    print('Low NA')
     for thisYScan in range(nY):
         for thisXScan in range(nX):
             # Current beam position
