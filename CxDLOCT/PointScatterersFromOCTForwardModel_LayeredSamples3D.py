@@ -310,10 +310,18 @@ else:
                 kVect, wavenumber, freqXVect, freqYVect, alpha, focalPlane, 
                 zRef, maxPointsBatch)
 
-# Calculate fringes with proper constants, including source spectrum
-# fringes1 = fringes1 * 1j / ((2 * np.pi) ** 2) * 1 * np.sqrt(sourceSpec) / kVect
+
 
 print("Execution time:", time.time() - start_time)
+# Calculate fringes with proper constants, including source spectrum
+sourceSpec1 = np.reshape(sourceSpec, (len(sourceSpec),1,1))
+kVect = np.reshape(kVect, (len(kVect),1,1))
+fringes = fringes1 * 1j / ((2 * np.pi) ** 2) * 1 * np.sqrt(sourceSpec1) / kVect
+#%%
+tom1 = np.fft.fftshift(np.fft.fft(np.fft.fftshift(fringes)))
+plt.imshow(abs(tom1)**2)
+
+
 #%%
 # # Beam waist diameter
 # beamWaistDiam = 2 * alpha / wavenumber
