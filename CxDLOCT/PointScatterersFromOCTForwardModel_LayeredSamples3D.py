@@ -94,7 +94,7 @@ def LowNA_3D(amp, z, x, y, kVect, k, xi_x, xi_y, alpha, zFP, zRef, maxBatchSize=
                     np.sum(np.exp(-1j * ( xi_x * x[:,:,thisBatch] )) * \
                            np.exp(-1j * (z[:,:,thisBatch] - zFP) * xi_x ** 2 / k / 4) * \
                             np.exp(- (xi_x * alpha / k / 2) ** 2),axis=1, keepdims=True) * \
-                                np.sum(np.exp(-1j * ( xi_y.T * y[:,:,thisBatch] )) * \
+                                np.sum(np.exp(-1j * ( xi_y * y[:,:,thisBatch] )) * \
                                        np.exp(-1j * (z[:,:,thisBatch] - zFP)* xi_y ** 2 / k / 4) * \
                                         np.exp(- (xi_y * alpha / k / 2) ** 2),axis=2, keepdims=True)
         # sum the contribution of all scatteres, considering its individual amplitudes
