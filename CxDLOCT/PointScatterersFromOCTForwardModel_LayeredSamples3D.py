@@ -129,7 +129,7 @@ varType = 'float32'
 # Número de puntos del tomograma
 nZ = 32  # axial, número de píxeles por línea A, teniendo en cuenta el relleno con ceros
 nX = 32 + 32  # eje de exploración rápida, número de líneas A por exploración B
-nY = 1  # eje de exploración lenta, número de exploraciones B por tomograma
+nY = 2  # eje de exploración lenta, número de exploraciones B por tomograma
 nK = 128  # Número de muestras, <= nZ, la diferencia es el relleno con ceros
 xNyquistOversampling = 1  # Factor de muestreo del galvanómetro. 1 -> Nyquist
 nXOversampling = nX  # Número de líneas A para sobremuestreo de la PSF <= nX, la diferencia es el relleno con ceros
@@ -319,7 +319,7 @@ kVect = np.reshape(kVect, (len(kVect),1,1))
 fringes = fringes1 * 1j / ((2 * np.pi) ** 2) * 1 * np.sqrt(sourceSpec1) / kVect
 #%%
 tom1 = np.fft.fftshift(np.fft.fft(np.fft.fftshift(fringes)))
-plt.imshow(abs(tom1)**2)
+plt.imshow(abs(tom1[:,:,0])**2)
 
 
 #%%
