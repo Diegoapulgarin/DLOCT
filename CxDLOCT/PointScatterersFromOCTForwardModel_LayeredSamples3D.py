@@ -6,7 +6,7 @@ from scipy.fft import fft, fftshift
 from scipy.signal import windows
 from CreateLayeredSample import create_Layered_Sample
 import matplotlib.pyplot as plt
-from ForwardModel_PointScatterers_FreqLowNA_3D import LowNA_3D
+# from ForwardModel_PointScatterers_FreqLowNA_3D import LowNA_3D
 from ForwardModel_PointScatterers_HighNA import HighNA
 import time
 #%%
@@ -47,6 +47,61 @@ def coerce(matrix, minimum=0, maximum=1):
     changed = np.any(matrix != matrix_coerced)
 
     return matrix_coerced, changed
+
+def LowNA_3D(amp, z, x, y, kVect, k, xi_x, xi_y, alpha, zFP, zRef, maxBatchSize=None):
+    # Beam waist diameter
+    beamWaistDiam = 2 * alpha / k
+    # Raylight range
+    zR = 2 * alpha ** 2 / k
+  
+    # Remove all points beyond n times the beam position; their contribution is not worth the calculation
+    nullPoints = np.sqrt(x**2 + y**2) > 20 * beamWaistDiam * np.sqrt(1 + (z / zR) ** 2)
+    amp = amp[~nullPoints]
+    amp = np.reshape(amp,(1,1,np.shape(amp)[0]))
+    z = z[~nullPoints]
+    z = np.reshape(z,(1,1,np.shape(z)[0]))
+    x = x[~nullPoints]
+    x = np.reshape(x,(1,1,np.shape(x)[0]))
+    y = y[~nullPoints]
+    y = np.reshape(y,(1,1,np.shape(y)[0]))
+  
+    # Number of points
+    nPoints = z.shape[2]
+    
+    # If not input batchSize calculate contribution from all points at once
+    if maxBatchSize is None:
+        maxBatchSize = nPoints
+    
+    # Batch size
+    batchSize = min(maxBatchSize, nPoints)
+    
+    # Number of batches of points
+    nBatches = np.ceil(nPoints / batchSize)
+    
+    # Initialize output
+    fringes = np.zeros((kVect.shape[0], 1), dtype=kVect.dtype)
+    # kVect = kVect[np.newaxis, np.newaxis, np.newaxis, :]
+    
+    # Iterate batches
+    for j in range(int(nBatches)):
+        # Calculate the contribution from this batch of points
+        thisBatch = np.minimum((np.array(range(batchSize)) + j * batchSize), nPoints)
+        print(np.shape(kVect))
+        # In this case we use 2*kVect - xi_x^2/(4*k) where kVect is a vector BUT k is an scalar, yielding the low-NA model
+        thisFringes = 1 / (8 * np.pi ** 2) / \
+            ((alpha / k) ** 2 + (1j * (z[:,:,thisBatch] - zFP) / k)) * \
+                np.exp(2j * (z[:,:,thisBatch] - zRef) * kVect) * \
+                    np.sum(np.exp(-1j * ( xi_x * x[:,:,thisBatch] )) * \
+                           np.exp(-1j * (z[:,:,thisBatch] - zFP) * xi_x ** 2 / k / 4) * \
+                            np.exp(- (xi_x * alpha / k / 2) ** 2),axis=1, keepdims=True) * \
+                                np.sum(np.exp(-1j * ( xi_y.T * y[:,:,thisBatch] )) * \
+                                       np.exp(-1j * (z[:,:,thisBatch] - zFP)* xi_y ** 2 / k / 4) * \
+                                        np.exp(- (xi_y * alpha / k / 2) ** 2),axis=2, keepdims=True)
+        # sum the contribution of all scatteres, considering its individual amplitudes
+        fringes = fringes + np.sum(amp[:,:,thisBatch] * thisFringes, axis=2)
+        print('ok')
+    return fringes
+
 
 #%%
 varType = 'float32'
@@ -117,10 +172,11 @@ yVect = np.linspace(-ySize / 2, ySize / 2 - latSampling, nY); np.float32(0)
 freqBWFac = 2  # Aumentar el ancho de banda de frecuencia para evitar artefactos en la FT numérica
 nFreqX = nX * freqBWFac
 freqXVect = np.float32(np.linspace(-0.5, 0.5 - 1 / nFreqX, nFreqX)) / (latSampling / freqBWFac) * 2 * np.pi
-
+freqXVect = np.reshape(freqXVect,(1,1,len(freqXVect))).T
 nFreqY = nY * freqBWFac
-freqYVect = np.zeros((1,1,1,2))
-freqYVect[0,0,0,:] = np.float32(np.linspace(-0.5, 0.5 - 1 / nFreqY, nFreqY)) / (latSampling / freqBWFac) * 2 * np.pi
+freqYVect = np.zeros((1,1,2))
+freqYVect[0,0,:] = np.float32(np.linspace(-0.5, 0.5 - 1 / nFreqY, nFreqY)) / (latSampling / freqBWFac) * 2 * np.pi
+
 #%%
 
 # Parámetros para crear el objeto con dispersores puntuales
@@ -191,11 +247,7 @@ objSuscepIndx = np.ravel_multi_index((coerced_objPosZ-1, coerced_objPosX-1, np.z
 objSuscepIndx_unique, objAmpIndx = np.unique(objSuscepIndx, return_index=True)
 objAmp_flat = objAmp.ravel()
 np.put(objSuscep, objSuscepIndx_unique, objAmp_flat[objAmpIndx])
-
-
-
 #%%
-
 for i in range(1, nY):
     objAmp = np.concatenate((objAmp, objAmp[:, :, :nPointSource//nY]), axis=2)
     objPosX = np.concatenate((objPosX, objPosX[:, :, :nPointSource//nY]), axis=2)
@@ -203,12 +255,12 @@ for i in range(1, nY):
     objSuscep = np.concatenate((objSuscep, np.expand_dims(objSuscep[:, :, 0], axis=2)), axis=2)
 #%%
 # Forward Model
-modelISAM = True
+modelISAM = False
 start_time = time.time()
 
 # Prepare an empty array for fringes
 fringes1 = np.zeros((nK, nX, nY), dtype=varType)
-
+kVect = kVect.reshape((128, 1))  # Changing shape of k_vect to (128, 1, 1)
 if modelISAM:
     print('High NA')
     for thisScan in range(nX):
@@ -238,3 +290,22 @@ else:
 fringes1 = fringes1 * 1j / ((2 * np.pi) ** 2) * 1 * np.sqrt(sourceSpec) / kVect
 
 print("Execution time:", time.time() - start_time)
+#%%
+# Beam waist diameter
+beamWaistDiam = 2 * alpha / wavenumber
+# Raylight range
+zR = 2 * alpha ** 2 / wavenumber
+x = objPosX - thisBeamPosX
+y = objPosY - thisBeamPosY
+z = objPosZ
+amp = objAmp
+# Remove all points beyond n times the beam position; their contribution is not worth the calculation
+nullPoints = np.sqrt(x**2 + y**2) > 20 * beamWaistDiam * np.sqrt(1 + (z / zR) ** 2)
+amp = amp[~nullPoints]
+amp = np.reshape(amp,(1,1,np.shape(amp)[0]))
+z = z[~nullPoints]
+z = np.reshape(z,(1,1,np.shape(z)[0]))
+x = x[~nullPoints]
+x = np.reshape(x,(1,1,np.shape(x)[0]))
+y = y[~nullPoints]
+y = np.reshape(y,(1,1,np.shape(y)[0]))
