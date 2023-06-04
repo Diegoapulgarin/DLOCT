@@ -86,19 +86,39 @@ def LowNA_3D(amp, z, x, y, kVect, k, xi_x, xi_y, alpha, zFP, zRef, maxBatchSize=
     for j in range(int(nBatches)):
         # Calculate the contribution from this batch of points
         thisBatch = np.minimum((np.array(range(batchSize)) + j * batchSize), nPoints)
-        print(np.shape(kVect))
+        print(j)
+        print(thisBatch)
+        print(np.shape(thisBatch))
         # In this case we use 2*kVect - xi_x^2/(4*k) where kVect is a vector BUT k is an scalar, yielding the low-NA model
-        thisFringes = 1 / (8 * np.pi ** 2) / \
-            ((alpha / k) ** 2 + (1j * (z[:,:,thisBatch] - zFP) / k)) * \
-                np.exp(2j * (z[:,:,thisBatch] - zRef) * kVect) * \
-                    np.sum(np.exp(-1j * ( xi_x * x[:,:,thisBatch] )) * \
-                           np.exp(-1j * (z[:,:,thisBatch] - zFP) * xi_x ** 2 / k / 4) * \
-                            np.exp(- (xi_x * alpha / k / 2) ** 2),axis=1, keepdims=True) * \
-                                np.sum(np.exp(-1j * ( xi_y * y[:,:,thisBatch] )) * \
-                                       np.exp(-1j * (z[:,:,thisBatch] - zFP)* xi_y ** 2 / k / 4) * \
-                                        np.exp(- (xi_y * alpha / k / 2) ** 2),axis=2, keepdims=True)
+        a = 1 / (8 * np.pi ** 2)/((alpha / k) ** 2 + (1j * (z[:,:,thisBatch-1] - zFP) / k))
+        b = np.exp(2j * (z[:,:,thisBatch-1] - zRef) * kVect)
+        b = np.transpose(b,(1,0,2))
+        c = np.sum(np.exp(-1j * ( xi_x * x[:,:,thisBatch-1] ))*
+                   np.exp(-1j * (z[:,:,thisBatch-1] - zFP) * xi_x ** 2 / k / 4) *
+                   np.exp(- (xi_x * alpha / k / 2) ** 2),axis=0, keepdims=True)
+        da = np.exp(-1j * ( xi_y.T * y[:,:,thisBatch-1] ))
+        db = np.exp(-1j * (z[:,:,thisBatch-1] - zFP).T* xi_y ** 2 / k / 4)
+        dc = np.exp(- (xi_y * alpha / k / 2) ** 2)
+        da = np.transpose(da,(1,2,0))
+        db = np.transpose(db,(1,0,2))
+        d = np.sum(da*db*dc,axis=2, keepdims=True)
+        d = np.transpose(d,(0,2,1))
+        thisFringes = a*b*c*d
+        # d = np.sum(np.exp(-1j * ( xi_y.T * y[:,:,thisBatch] )) *
+        #            np.exp(-1j * (z[:,:,thisBatch] - zFP).T* xi_y ** 2 / k / 4) *
+        #            np.exp(- (xi_y * alpha / k / 2) ** 2),axis=2, keepdims=True)
+        # thisFringes = 1 / (8 * np.pi ** 2) / \
+        #     ((alpha / k) ** 2 + (1j * (z[:,:,thisBatch] - zFP) / k)) * \
+        #         np.exp(2j * (z[:,:,thisBatch] - zRef) * kVect) * \
+        #             np.sum(np.exp(-1j * ( xi_x * x[:,:,thisBatch] )) * \
+        #                    np.exp(-1j * (z[:,:,thisBatch] - zFP) * xi_x ** 2 / k / 4) * \
+        #                     np.exp(- (xi_x * alpha / k / 2) ** 2),axis=1, keepdims=True) * \
+        #                         np.sum(np.exp(-1j * ( xi_y * y[:,:,thisBatch] )) * \
+        #                                np.exp(-1j * (z[:,:,thisBatch] - zFP)* xi_y ** 2 / k / 4) * \
+        #                                 np.exp(- (xi_y * alpha / k / 2) ** 2),axis=2, keepdims=True)
         # sum the contribution of all scatteres, considering its individual amplitudes
-        fringes = fringes + np.sum(amp[:,:,thisBatch] * thisFringes, axis=2)
+        fringes = fringes + np.sum(amp[:,:,thisBatch-1] * thisFringes, axis=2)
+        fringes = fringes[:,0]
         print('ok')
     return fringes
 
@@ -280,32 +300,47 @@ else:
             thisBeamPosX = xVect[thisXScan]
             thisBeamPosY = yVect[thisYScan]
             # Spectrum at this beam possition is the contribution of the Gaussian
-            # beam at the location of the point sources
+            # beam at the location of the point 
+            # fringes1= LowNA_3D(
+            #     objAmp, objPosZ, objPosX - thisBeamPosX, objPosY - thisBeamPosY, 
+            #     kVect, wavenumber, freqXVect, freqYVect, alpha, focalPlane, 
+            #     zRef, maxPointsBatch)
             fringes1[:, thisXScan, thisYScan] = LowNA_3D(
                 objAmp, objPosZ, objPosX - thisBeamPosX, objPosY - thisBeamPosY, 
                 kVect, wavenumber, freqXVect, freqYVect, alpha, focalPlane, 
                 zRef, maxPointsBatch)
 
 # Calculate fringes with proper constants, including source spectrum
-fringes1 = fringes1 * 1j / ((2 * np.pi) ** 2) * 1 * np.sqrt(sourceSpec) / kVect
+# fringes1 = fringes1 * 1j / ((2 * np.pi) ** 2) * 1 * np.sqrt(sourceSpec) / kVect
 
 print("Execution time:", time.time() - start_time)
 #%%
-# Beam waist diameter
-beamWaistDiam = 2 * alpha / wavenumber
-# Raylight range
-zR = 2 * alpha ** 2 / wavenumber
-x = objPosX - thisBeamPosX
-y = objPosY - thisBeamPosY
-z = objPosZ
-amp = objAmp
-# Remove all points beyond n times the beam position; their contribution is not worth the calculation
-nullPoints = np.sqrt(x**2 + y**2) > 20 * beamWaistDiam * np.sqrt(1 + (z / zR) ** 2)
-amp = amp[~nullPoints]
-amp = np.reshape(amp,(1,1,np.shape(amp)[0]))
-z = z[~nullPoints]
-z = np.reshape(z,(1,1,np.shape(z)[0]))
-x = x[~nullPoints]
-x = np.reshape(x,(1,1,np.shape(x)[0]))
-y = y[~nullPoints]
-y = np.reshape(y,(1,1,np.shape(y)[0]))
+# # Beam waist diameter
+# beamWaistDiam = 2 * alpha / wavenumber
+# # Raylight range
+# zR = 2 * alpha ** 2 / wavenumber
+# x = objPosX - thisBeamPosX
+# y = objPosY - thisBeamPosY
+# z = objPosZ
+# amp = objAmp
+# # Remove all points beyond n times the beam position; their contribution is not worth the calculation
+# nullPoints = np.sqrt(x**2 + y**2) > 20 * beamWaistDiam * np.sqrt(1 + (z / zR) ** 2)
+# amp = amp[~nullPoints]
+# amp = np.reshape(amp,(1,1,np.shape(amp)[0]))
+# z = z[~nullPoints]
+# z = np.reshape(z,(1,1,np.shape(z)[0]))
+# x = x[~nullPoints]
+# x = np.reshape(x,(1,1,np.shape(x)[0]))
+# y = y[~nullPoints]
+# y = np.reshape(y,(1,1,np.shape(y)[0]))
+# #%%
+# da = np.transpose(da,(1,2,0))
+# db = np.transpose(db,(1,0,2))
+# #%%
+# d = np.sum(da*db*dc,axis=2, keepdims=True)
+# d = np.transpose(d,(0,2,1))
+
+# #%%
+# nfringes = a*b*c*d
+
+# test = fringes1[:,0]
