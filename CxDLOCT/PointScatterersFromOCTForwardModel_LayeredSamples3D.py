@@ -10,13 +10,52 @@ from ForwardModel_PointScatterers_FreqLowNA_3D import LowNA_3D
 from ForwardModel_PointScatterers_HighNA import HighNA
 import time
 #%%
+
+def coerce(matrix, minimum=0, maximum=1):
+    """
+    Coerce matrix into range defined by minimum and maximum. By default
+    minimum = 0, maximum = 1.
+
+    Parameters
+    ----------
+    matrix : ndarray
+        Input array.
+    minimum : scalar, optional
+        Lower limit for coercion.
+    maximum : scalar, optional
+        Upper limit for coercion.
+
+    Returns
+    -------
+    matrix_coerced : ndarray
+        Coerced array.
+    changed : bool
+        True if any value had to be coerced.
+    """
+
+    # Create an array to track NaN values
+    matrix_nan_idx = np.isnan(matrix)
+
+    # Coerce matrix
+    matrix_coerced = np.maximum(matrix, minimum)
+    matrix_coerced = np.minimum(matrix_coerced, maximum)
+  
+    # Put NaNs back in
+    matrix_coerced[matrix_nan_idx] = np.nan
+  
+    # Calculate whether any values were changed
+    changed = np.any(matrix != matrix_coerced)
+
+    return matrix_coerced, changed
+
+#%%
 varType = 'float32'
 # Parámetros de la simulación
 # Número de puntos del tomograma
 nZ = 32  # axial, número de píxeles por línea A, teniendo en cuenta el relleno con ceros
 nX = 32 + 32  # eje de exploración rápida, número de líneas A por exploración B
 nY = 1  # eje de exploración lenta, número de exploraciones B por tomograma
-nK = 400  # Número de muestras, <= nZ, la diferencia es el relleno con ceros
+nK = 128  # Número de muestras, <= nZ, la diferencia es el relleno con ceros
 xNyquistOversampling = 1  # Factor de muestreo del galvanómetro. 1 -> Nyquist
 nXOversampling = nX  # Número de líneas A para sobremuestreo de la PSF <= nX, la diferencia es el relleno con ceros
 
@@ -80,7 +119,8 @@ nFreqX = nX * freqBWFac
 freqXVect = np.float32(np.linspace(-0.5, 0.5 - 1 / nFreqX, nFreqX)) / (latSampling / freqBWFac) * 2 * np.pi
 
 nFreqY = nY * freqBWFac
-freqYVect = np.float32(np.linspace(-0.5, 0.5 - 1 / nFreqY, nFreqY)) / (latSampling / freqBWFac) * 2 * np.pi
+freqYVect = np.zeros((1,1,1,2))
+freqYVect[0,0,0,:] = np.float32(np.linspace(-0.5, 0.5 - 1 / nFreqY, nFreqY)) / (latSampling / freqBWFac) * 2 * np.pi
 #%%
 
 # Parámetros para crear el objeto con dispersores puntuales
@@ -123,6 +163,38 @@ else:
 # del objPosY
 objPosY = np.zeros((1, 1, nPointSource))
 objPosY[0, 0, :] = np.repeat(yVect, nPointSource // nY)
+
+# Crea un array de ceros con las dimensiones especificadas
+objSuscep = np.zeros((nZ, nX))
+
+# Asegúrate de que las posiciones estén dentro de los límites
+objPosZ_rounded = np.clip(np.round(objPosZ / axSampling).astype(int), 0, nZ-1)
+objPosX_rounded = np.clip(np.round(objPosX / latSampling).astype(int) + nX // 2, 0, nX-1)
+
+#%%
+# Suponiendo que varType es 'float' en este contexto
+objSuscep = np.zeros((nZ, nX, nY))
+
+# Coerción de los índices
+# Para evitar la asignación de NaNs a matrices enteras, 
+# se puede mantener todo en flotante y luego convertir a int después de la coerción
+coerced_objPosZ, _ = coerce(np.round(objPosZ / axSampling), 1, nZ)
+coerced_objPosX, _ = coerce(np.round(objPosX / latSampling) + nX / 2, 1, nX)
+
+# Redondeamos y convertimos a enteros después de la coerción para evitar el error de NaN
+coerced_objPosZ = np.round(coerced_objPosZ).astype(int)
+coerced_objPosX = np.round(coerced_objPosX).astype(int)
+
+# Creación de índices para un array 3D y obtención de índices únicos
+# Asegurémonos de que estamos dando tres dimensiones a np.ravel_multi_index
+objSuscepIndx = np.ravel_multi_index((coerced_objPosZ-1, coerced_objPosX-1, np.zeros_like(coerced_objPosZ, dtype=int)), objSuscep.shape)
+objSuscepIndx_unique, objAmpIndx = np.unique(objSuscepIndx, return_index=True)
+objAmp_flat = objAmp.ravel()
+np.put(objSuscep, objSuscepIndx_unique, objAmp_flat[objAmpIndx])
+
+
+
+#%%
 
 for i in range(1, nY):
     objAmp = np.concatenate((objAmp, objAmp[:, :, :nPointSource//nY]), axis=2)
