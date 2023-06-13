@@ -20,8 +20,6 @@ fftsrv = abs(np.fft.fftshift(np.fft.fft(srv)))
 fftscv = abs(np.fft.fftshift(np.fft.fft(scv)))
 fftrec = abs(np.fft.fftshift(np.fft.fft(recscv)))
 srvfreq = np.fft.fftshift(np.fft.fftfreq((len(fftscv)),1/fs))
-
-
 fig = make_subplots(rows=4,cols=1)
 fig.add_trace(go.Line(y=srv,x=t,name='Cosine'),row=1,col=1)
 fig.add_trace(go.Line(y=np.real(scv),x=t,line=dict(dash='dash'),name='real part'),row=1,col=1)
@@ -31,5 +29,5 @@ fig.add_trace(go.Line(y=imaginary_signal,x=t,line=dict(dash='dash'),name='recove
 fig.add_trace(go.Line(y=fftsrv,x=srvfreq,name='FFT cosine'),row=2,col=1)
 fig.add_trace(go.Line(y=fftrec,x=srvfreq,name='FFT recovered signal'),row=3,col=1)
 fig.add_trace(go.Line(y=fftscv,x=srvfreq,name='FFT exponential'),row=4,col=1)
-
 fig.show()
+fig.write_html('Basic_complex_problem.html')

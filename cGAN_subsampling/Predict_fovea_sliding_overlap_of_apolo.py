@@ -59,12 +59,14 @@ tomDatas = np.sum(tomDatas,axis=3) # Z,X,Y,pol1-2,imag-real
 num_zeros = 64
 pad_width = ((0, 0), (0, 0), (0, num_zeros), (0, 0), (0, 0))
 tomDatas = np.pad(tomDatas, pad_width, mode='edge')
-pol = [1,2]
-
+#tomDatas = tomDatas[0:5,:,:,:,:]
+#pol = [0,1]
+pol = [1]
 tomDataOverOf = []
 # %%
-for i in pol: 
-    tomData = tomDatas[:,:,:,pol,:]
+for c in pol: 
+    print(c)
+    tomData = tomDatas[:,:,:,c,:]
     tomShape = np.shape(tomData)
     slidingYSize = 128
     slidingXSize = 128
@@ -74,11 +76,13 @@ for i in pol:
     step_size = (strideX,strideY)
 
     slices = []
+    print(len(tomData))
     for i in range(len(tomData)):
         bslicei = sliding_window(tomData[i,:,:,0],window_size,step_size)
         bslicer = sliding_window(tomData[i,:,:,1],window_size,step_size)
         bslice = np.stack((bslicer,bslicei),axis=3)
         slices.append(bslice)
+    print(np.shape(slices))
     slices = np.array(slices)
     slices = np.reshape(slices,(slices.shape[0]*slices.shape[1],slices.shape[2],slices.shape[3],slices.shape[4]))
     del tomData
@@ -89,12 +93,13 @@ for i in pol:
     logslicesUnder = downSampleSlices(logslices)
     del logslices
     logslicesOver = np.array(model.predict(logslicesUnder, batch_size=8), dtype='float32')
+    del logslicesUnder
     slicesOver = inverseLogScaleSlices(logslicesOver, slicesMax, slicesMin)
-    del logslicesOver, logslicesUnder
+    del logslicesOver 
 
     original_size = (tomDatas.shape[1],tomDatas.shape[2])
     original_planes = tomDatas.shape[0]
-    origslicesOver = np.reshape(slicesOver,(original_planes,int(slicesOver.shape[0]/original_planes),slicesOver.shape[1],slicesOver.shape[2],2),)
+    origslicesOver = np.reshape(slicesOver,(original_planes,int(slicesOver.shape[0]/original_planes),slicesOver.shape[1],slicesOver.shape[2],2))
     number_planes =  origslicesOver.shape[0]
     tomDataOver = []
     for b in range(number_planes):
@@ -105,6 +110,9 @@ for i in pol:
     tomDataOver = np.array(tomDataOver)
     tomDataOver = tomDataOver[:, :, :tomDataOver.shape[2]-num_zeros,:]
     datatoprocess = tomDataOver
+
+    del tomDataOver
+
     dim = 1
     kte = 0.0
     ftslice = np.fft.ifftshift(
@@ -125,12 +133,18 @@ for i in pol:
     fit = (histFitSlicesNew - p[2]) / histFitSlicesNew
     fit[fit < 0] = 0
     fit= fit / np.max(fit)
+
+    del ftslice
+
     fftomograma = np.fft.ifftshift(
         np.fft.fft2(
             np.fft.fftshift(
                 datatoprocess[:, :, :, 0] + 1j*datatoprocess[:, :, :, 1], axes=(dim))
             ), axes=(dim)
         )
+
+    del datatoprocess
+
     fit.shape
     shapefit = [1,1,1]
     shapefit[dim] = fit.size
@@ -144,11 +158,11 @@ for i in pol:
                 fftomograma[:, :, :] + 1j*fftomograma[:, :, :], axes=(dim))
             ), axes=(dim)
         )
-    tomDataOverOf.append(tomDataP)
+    #tomDataOverOf.append(tomDataP)
 
-savepath = rootFolder + 'tomDataOver.mat'
-tomDataOverOf = np.array(tomDataOverOf)
-print(np.shape(tomDataOverOf))
-tomDataOverOf = abs(np.transpose(tomDataOverOf, (1, 2, 3, 0)))**2
-print(np.shape(tomDataOverOf))
-savemat(savepath, {'tomDataOver': tomDataOverOf.astype(np.float64)})
+    tomDataOverOf = abs(tomDataP)**2
+    del tomDataP
+    savepath = rootFolder + 'tomDataOverpol'+str(c+1)+'Overlap.mat'
+    print(np.shape(tomDataOverOf))
+    savemat(savepath, {'tomDataOver': tomDataOverOf.astype(np.float64)})
+    del tomDataOverOf

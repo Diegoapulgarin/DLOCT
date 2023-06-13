@@ -59,13 +59,15 @@ tomDatas = np.sum(tomDatas,axis=3) # Z,X,Y,pol1-2,imag-real
 num_zeros = 64
 pad_width = ((0, 0), (0, 0), (0, num_zeros), (0, 0), (0, 0))
 tomDatas = np.pad(tomDatas, pad_width, mode='edge')
-pol = [1,2]
-
+print(np.shape(tomDatas))
+pol = [0,1]
 tomDataOverOf = []
 # %%
 for i in pol: 
-    tomData = tomDatas[:,:,:,pol,:]
+    print(i)
+    tomData = tomDatas[:,:,:,i,:]
     tomShape = np.shape(tomData)
+    print(tomShape)
     slidingYSize = 128
     slidingXSize = 128
     strideY = 128
@@ -118,11 +120,7 @@ for i in pol:
                 fftomograma[:, :, :] + 1j*fftomograma[:, :, :], axes=(dim))
             ), axes=(dim)
         )
-    tomDataOverOf.append(tomDataP)
-
-savepath = rootFolder + 'tomDataOver.mat'
-tomDataOverOf = np.array(tomDataOverOf)
-print(np.shape(tomDataOverOf))
-tomDataOverOf = abs(np.transpose(tomDataOverOf, (1, 2, 3, 0)))**2
-print(np.shape(tomDataOverOf))
-savemat(savepath, {'tomDataOver': tomDataOverOf.astype(np.float64)})
+    tomDataOverOf = abs(tomDataP)**2
+    savepath = rootFolder + 'tomDataOverpol'+str(i)+'.mat'
+    print(np.shape(tomDataOverOf))
+    savemat(savepath, {'tomDataOver': tomDataOverOf.astype(np.float64)})
