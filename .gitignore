@@ -130,3 +130,7 @@ dmypy.json
 
 #personalized
 .png
+.mat
+.py
+.html
+.txt
