@@ -3,13 +3,14 @@ import numpy as np
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from scipy.signal import hilbert
+import plotly.express as px
 #%%
 fs = 300
 f = 10
 w = 2*np.pi*f
 t = np.arange(0,1,1/fs)
 A = 1
-phase = np.pi/3
+phase = 0
 srv = A*np.cos(w*t+phase)
 scv = A*np.exp(1j*(w*t+phase))
 real_signal = np.real(scv) 
@@ -30,4 +31,12 @@ fig.add_trace(go.Line(y=fftsrv,x=srvfreq,name='FFT cosine'),row=2,col=1)
 fig.add_trace(go.Line(y=fftrec,x=srvfreq,name='FFT recovered signal'),row=3,col=1)
 fig.add_trace(go.Line(y=fftscv,x=srvfreq,name='FFT exponential'),row=4,col=1)
 fig.show()
-fig.write_html('Basic_complex_problem.html')
+# fig.write_html('Basic_complex_problem.html')
+
+#%%
+
+intensity = np.abs(scv)*np.cos(np.angle(scv))
+fft_intensity = abs(np.fft.fftshift(np.fft.fft(intensity)))
+fig=px.line(y = fft_intensity,x=srvfreq)
+fig.show()
+

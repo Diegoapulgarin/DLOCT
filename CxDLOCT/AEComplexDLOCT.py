@@ -7,13 +7,55 @@ from scipy.fft import fft, fftshift
 from scipy.ndimage import shift
 from numpy.random import randn
 import plotly.graph_objs as go
+import plotly.subplots as sp
 from scipy.signal import hilbert
 from sklearn.model_selection import train_test_split
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Input, Conv1D, MaxPooling1D, UpSampling1D
 from sklearn.preprocessing import StandardScaler
 from sklearn.preprocessing import MinMaxScaler
-#%%
+#%% Functions
+def reconstruct_tomogram(fringes1, zeroPadding=0, noiseFloorDb=0,z=2):
+    nK = fringes1.shape[0]  # the size along the first dimension
+    nZ, nX, nY = fringes1.shape  # fringes1 is 3D
+    zRef = nZ / z  # zRef value
+    zSize = 256  # zSize value
+
+    # Apply hanning window along the first dimension
+    fringes1 = fringes1 * np.hanning(nK)[:, np.newaxis, np.newaxis]
+
+    # Pad the fringes
+    fringes1_padded = np.pad(fringes1, ((zeroPadding, zeroPadding), (0, 0), (0, 0)), mode='constant')
+
+    # Fourier Transform
+    tom1True = fftshift(fft(fftshift(fringes1_padded, axes=0), axis=0), axes=0)
+    tom1 = tom1True + (((10 ** (noiseFloorDb / 20)) / 1) * (randn(nZ, nX, nY) + 1j * randn(nZ, nX, nY)))
+
+    refShift = int((2 * zRef + zSize) / zSize * nZ) // 2
+    tom1 = np.roll(tom1, refShift, axis=0)
+    tom1True = np.roll(tom1True, refShift, axis=0)
+    
+    return tom1True, tom1
+
+def plot_images(array1, array2, zmin, zmax,tittle,save=False):
+    fig = sp.make_subplots(rows=1, cols=2)
+
+    fig.add_trace(
+        go.Heatmap(z=np.flipud(array1), zmin=zmin, zmax=zmax, colorscale='Gray'),
+        row=1, col=1
+    )
+
+    fig.add_trace(
+        go.Heatmap(z=np.flipud(array2), zmin=zmin, zmax=zmax, colorscale='Gray'),
+        row=1, col=2
+    )
+    fig.update_xaxes(showticklabels=False)
+    fig.update_yaxes(showticklabels=False)  
+    fig.update_layout(height=600, width=800, title_text=tittle)
+    if save:
+        fig.write_html(tittle +'.html')
+    fig.show()
+#%% Reading Data
 path = r'C:\Users\diego\Documents\Github\Simulated_Data_Complex'
 os.chdir(path)
 fringes = []
@@ -23,60 +65,41 @@ for filename in os.listdir(os.getcwd()):
    fringes.append(fringes1)
    print(filename)
 fringes = np.array(fringes)
-# %%
+# %% split between test and train
 testfringes = fringes[6,:,:,:]
 trainfringes = fringes[0:6,:,:,:]
 #%%
-thisfringes = 5
+thisfringes = 4
 # Assuming fringes1 is a 3D numpy array
 fringes1 = fringes[thisfringes,:,:,:]
-nK = fringes1.shape[0]  # the size along the first dimension
-zeroPadding = 0 
-noiseFloorDb = 0  # noise floor in dB
-nZ, nX, nY = fringes1.shape  # fringes1 is 3D
-zRef = nZ / 2  # zRef value
-zSize = 256  # zSize value
-# Apply hanning window along the first dimension
-fringes1 = fringes1 * np.hanning(nK)[:, np.newaxis, np.newaxis]
+tom1True,tom1= reconstruct_tomogram(fringes1,z=4)
+tom2True,tom2 = reconstruct_tomogram(np.real(fringes1),z=4)
 
-fringes1_padded = np.pad(fringes1, ((zeroPadding, zeroPadding), (0, 0), (0, 0)), mode='constant')
+plot_real = 10*np.log10(abs(tom1[:,:,0])**2)
+plot_twin = 10*np.log10(abs(tom2[:,:,0])**2)
 
-# Fourier Transform
-tom1True = fftshift(fft(fftshift(fringes1_padded, axes=0), axis=0), axes=0)
-tom1 = tom1True + (((10 ** (noiseFloorDb / 20)) / 1) * (randn(nZ, nX, nY) + 1j * randn(nZ, nX, nY)))
-
-refShift = int((2 * zRef + zSize) / zSize * nZ) // 2
-tom1 = np.roll(tom1, refShift, axis=0)
-tom1True = np.roll(tom1True, refShift, axis=0)
-
-plot = 10*np.log10(abs(tom1[:,:,0])**2)
-fig = px.imshow(plot,color_continuous_scale='gray',zmin=50,zmax=150)
-fig.show()
+plot_images(plot_real,plot_twin,50,150,'comaprision between bscan with and without twin image')
 fig = go.Figure()
 fig.add_trace(go.Scatter(y=np.real(fringes1[:,1,1]), mode='lines', name='Real Part'))
 fig.add_trace(go.Scatter(y=np.imag(fringes1[:,1,1]), mode='lines', name='Imaginary Part'))
 fig.show()
-#%%
+#%% Preprocessing section
 fringes_transpose = np.transpose(trainfringes,axes=[1,2,3,0])
-# fringes_transpose = fringes1 * np.hanning(nK)[:, np.newaxis, np.newaxis,np.newaxis]
-#%%
 real_fringes = np.real(fringes_transpose)
 hilbert_fringes = hilbert(real_fringes,axis=0)
 #%%
-thisfringes=5
 fig = go.Figure()
 fig.add_trace(go.Scatter(y=real_fringes[:,0,0,thisfringes], mode='lines', name='Real Part'))
 fig.add_trace(go.Scatter(y=np.imag(fringes_transpose[:,0,0,thisfringes]), mode='lines', name='Imaginary Part'))
 fig.add_trace(go.Scatter(y=np.imag(hilbert_fringes[:,0,0,thisfringes]), mode='lines', name='Hilbert transform'))
 fig.show()
+
 #%%
 scaler = StandardScaler()
 aline = 4096*5
 xdata = np.stack((real_fringes, hilbert_fringes.imag), axis=-1)
 xdata = xdata.reshape(256, -1, 2)
 xdata = np.transpose(xdata,axes=[1,0,2])
-
-
 # Reshape data to 2D
 num_samples, num_alines, num_channels = xdata.shape
 xdata_reshaped = xdata.reshape(num_samples * num_alines, num_channels)
@@ -146,6 +169,7 @@ predictions_original_scale = scaler.inverse_transform(predictions.reshape(-1, pr
 predictions_original_scale = predictions_original_scale.transpose(1, 0, 2).reshape(256,256,16,2)
 #%%
 predicted = (predictions_original_scale[:,:,:,0]+1j*predictions_original_scale[:,:,:,1])
+predictedo = (predictions_original_scale[:,:,:,0]+1j*predictions_original_scale[:,:,:,1])
 nK = predicted.shape[0]  # the size along the first dimension
 zeroPadding = 0 
 noiseFloorDb = 0  # noise floor in dB
@@ -166,9 +190,9 @@ tom1 = np.roll(tom1, refShift, axis=0)
 tom1True = np.roll(tom1True, refShift, axis=0)
 
 plot = 10*np.log10(abs(tom1[:,:,0])**2)
-fig = px.imshow(plot,color_continuous_scale='gray',zmin=70,zmax=150)
+fig = px.imshow(plot,color_continuous_scale='gray',zmin=85,zmax=150)
 fig.show()
 fig = go.Figure()
-fig.add_trace(go.Scatter(y=np.real(predicted[:,1,1]), mode='lines', name='Real Part'))
-fig.add_trace(go.Scatter(y=np.imag(predicted[:,1,1]), mode='lines', name='Imaginary Part'))
+fig.add_trace(go.Scatter(y=np.real(predictedo[:,1,1]), mode='lines', name='Real Part'))
+fig.add_trace(go.Scatter(y=np.imag(predictedo[:,1,1]), mode='lines', name='Imaginary Part'))
 fig.show()
