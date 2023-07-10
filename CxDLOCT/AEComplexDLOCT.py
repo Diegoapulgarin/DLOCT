@@ -56,13 +56,21 @@ def plot_images(array1, array2, zmin, zmax,tittle,save=False):
         fig.write_html(tittle +'.html')
     fig.show()
 #%% Reading Data
-path = r'C:\Users\diego\Documents\Github\Simulated_Data_Complex'
+#path = r'C:\Users\diego\Documents\Github\Simulated_Data_Complex'
+path = r'/home/haunted/Projects/DLOCT/CxDLOCT/Simulated_Data_Complex'
 os.chdir(path)
 fringes = []
 for filename in os.listdir(os.getcwd()):
-   mat_contents = sio.loadmat(path+'\\'+filename)
+   mat_contents = sio.loadmat(path+'/'+filename)
    fringes1 = mat_contents['fringes1']
-   fringes.append(fringes1)
+   divisions = int(fringes1.shape[2]/16)
+   n = 0 
+   for i in range(divisions):
+       fringes_slice = fringes1[:, :, n:n+16]
+       n = n + 16
+       print(n)
+       print(fringes_slice.shape)
+       fringes.append(fringes_slice)
    print(filename)
 fringes = np.array(fringes)
 # %% split between test and train
@@ -179,7 +187,7 @@ tom2True,tom2 = reconstruct_tomogram(testfringes)
 plot_predicted = 10*np.log10(abs(tom1[:,:,0])**2)
 plot_target = 10*np.log10(abs(tom2[:,:,0])**2)
 
-plot_images(plot_target,plot_predicted,50,150,'Original vs predicted')
+plot_images(plot_target,plot_predicted,0,150,'Original vs predicted')
 #%%
 
 fig = go.Figure()
