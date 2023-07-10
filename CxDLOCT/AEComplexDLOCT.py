@@ -1,4 +1,4 @@
-#%%
+#%% Import libraries
 import numpy as np 
 import plotly.express as px
 import os
@@ -13,8 +13,8 @@ from sklearn.model_selection import train_test_split
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Input, Conv1D, MaxPooling1D, UpSampling1D
 from sklearn.preprocessing import StandardScaler
-from sklearn.preprocessing import MinMaxScaler
-#%% Functions
+
+#%% Def Functions
 def reconstruct_tomogram(fringes1, zeroPadding=0, noiseFloorDb=0,z=2):
     nK = fringes1.shape[0]  # the size along the first dimension
     nZ, nX, nY = fringes1.shape  # fringes1 is 3D
@@ -155,44 +155,34 @@ autoencoder.compile(optimizer='adam', loss='MeanSquaredError',metrics=['accuracy
 autoencoder.summary()
 #%%
 # validation_data = [X_train, y_train]
-autoencoder.fit(X_train, y_train, epochs=50, batch_size=128, validation_data=[X_test, y_test])
+autoencoder.fit(X_train, y_train, epochs=150, batch_size=128, validation_data=[X_test, y_test])
 
-#%%
+#%% predict
 real_fringes_test = testfringes.real
 hilbert_fringes_test = hilbert(real_fringes_test)
 data_test = np.stack((real_fringes_test, hilbert_fringes_test.imag), axis=-1)
 data_test = data_test.reshape(256, -1, 2)
 data_test = np.transpose(data_test,axes=[1,0,2])
+
 data_test_standardized = scaler.transform(data_test.reshape(-1, data_test.shape[-1])).reshape(data_test.shape)
 predictions = autoencoder.predict(data_test_standardized)
+
 predictions_original_scale = scaler.inverse_transform(predictions.reshape(-1, predictions.shape[-1])).reshape(predictions.shape)
 predictions_original_scale = predictions_original_scale.transpose(1, 0, 2).reshape(256,256,16,2)
-#%%
 predicted = (predictions_original_scale[:,:,:,0]+1j*predictions_original_scale[:,:,:,1])
-predictedo = (predictions_original_scale[:,:,:,0]+1j*predictions_original_scale[:,:,:,1])
-nK = predicted.shape[0]  # the size along the first dimension
-zeroPadding = 0 
-noiseFloorDb = 0  # noise floor in dB
-nZ, nX, nY = predicted.shape  # fringes1 is 3D
-zRef = nZ / 2  # zRef value
-zSize = 256  # zSize value
-# Apply hanning window along the first dimension
-predicted = predicted * np.hanning(nK)[:, np.newaxis, np.newaxis]
 
-predicted_padded = np.pad(predicted, ((zeroPadding, zeroPadding), (0, 0), (0, 0)), mode='constant')
+#%%
 
-# Fourier Transform
-tom1True = fftshift(fft(fftshift(predicted_padded, axes=0), axis=0), axes=0)
-tom1 = tom1True + (((10 ** (noiseFloorDb / 20)) / 1) * (randn(nZ, nX, nY) + 1j * randn(nZ, nX, nY)))
+tom1True,tom1 = reconstruct_tomogram(predicted)
+tom2True,tom2 = reconstruct_tomogram(testfringes)
 
-refShift = int((2 * zRef + zSize) / zSize * nZ) // 2
-tom1 = np.roll(tom1, refShift, axis=0)
-tom1True = np.roll(tom1True, refShift, axis=0)
+plot_predicted = 10*np.log10(abs(tom1[:,:,0])**2)
+plot_target = 10*np.log10(abs(tom2[:,:,0])**2)
 
-plot = 10*np.log10(abs(tom1[:,:,0])**2)
-fig = px.imshow(plot,color_continuous_scale='gray',zmin=85,zmax=150)
-fig.show()
+plot_images(plot_target,plot_predicted,50,150,'Original vs predicted')
+#%%
+
 fig = go.Figure()
-fig.add_trace(go.Scatter(y=np.real(predictedo[:,1,1]), mode='lines', name='Real Part'))
-fig.add_trace(go.Scatter(y=np.imag(predictedo[:,1,1]), mode='lines', name='Imaginary Part'))
+fig.add_trace(go.Scatter(y=(real_fringes_test[:,0,0]), mode='lines', name='Real Part'))
+fig.add_trace(go.Scatter(y=np.imag(hilbert_fringes_test[:,0,0]), mode='lines', name='Imaginary Part'))
 fig.show()
