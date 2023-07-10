@@ -68,8 +68,6 @@ for filename in os.listdir(os.getcwd()):
    for i in range(divisions):
        fringes_slice = fringes1[:, :, n:n+16]
        n = n + 16
-       print(n)
-       print(fringes_slice.shape)
        fringes.append(fringes_slice)
    print(filename)
 fringes = np.array(fringes)
