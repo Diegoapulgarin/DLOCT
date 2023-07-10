@@ -155,7 +155,7 @@ autoencoder.compile(optimizer='adam', loss='MeanSquaredError',metrics=['accuracy
 autoencoder.summary()
 #%%
 # validation_data = [X_train, y_train]
-autoencoder.fit(X_train, y_train, epochs=150, batch_size=128, validation_data=[X_test, y_test])
+autoencoder.fit(X_train, y_train, epochs=50, batch_size=128, validation_data=[X_test, y_test])
 
 #%% predict
 real_fringes_test = testfringes.real
