@@ -179,7 +179,7 @@ tom2True,tom2 = reconstruct_tomogram(testfringes)
 plot_predicted = 10*np.log10(abs(tom1[:,:,0])**2)
 plot_target = 10*np.log10(abs(tom2[:,:,0])**2)
 
-plot_images(plot_target,plot_predicted,50,150,'Original vs predicted')
+plot_images(plot_target,plot_predicted,70,150,'Original vs predicted')
 #%%
 
 fig = go.Figure()
