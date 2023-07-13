@@ -1,25 +1,7 @@
 #%%
 import numpy as np
 import os
-import plotly.express as px
-import plotly.graph_objs as go
-import plotly.subplots as sp
-def plot_images(array1, array2, zmin, zmax,tittle,save=False):
-    fig = sp.make_subplots(rows=1, cols=2)
-    fig.add_trace(
-        go.Heatmap(z=np.flipud(array1), zmin=zmin, zmax=zmax, colorscale='Gray'),
-        row=1, col=1
-    )
-    fig.add_trace(
-        go.Heatmap(z=np.flipud(array2), zmin=zmin, zmax=zmax, colorscale='Gray'),
-        row=1, col=2
-    )
-    fig.update_xaxes(showticklabels=False)
-    fig.update_yaxes(showticklabels=False)  
-    fig.update_layout(height=600, width=800, title_text=tittle)
-    if save:
-        fig.write_html(tittle +'.html')
-    fig.show()
+from Deep_Utils import create_and_save_subplot, tiff_3Dsave
 #%%
 path = r'D:\DLOCT\TomogramsDataAcquisition\Fovea\No_motion_corrected\Final para analizar\z=(1..586)_x=(155..741)_y=(187..773)-nSpec=cGAN'
 file = 'TNodeIntFlattenRPE.bin'
@@ -39,8 +21,53 @@ tomint = np.array(tomint) # index 0 = cGAN, index 1 = original
 thisbscan=256
 plot_cGAN = 10*np.log10(abs(tomint[0,:,:,thisbscan])**2)
 plot_orig = 10*np.log10(abs(tomint[1,:,:,thisbscan])**2)
-#%%
+zmax=250
 zmin = 160
-zmax = 250
-tittle = 'Comparision en face plane between original and resampled with cGAN'
-plot_images(plot_orig,plot_cGAN,zmin,zmax,tittle,save=False)
+file = 'ZX_256'
+output = r'C:\Users\diego\Documents\Github\Result fovea cGAN subsampling'
+create_and_save_subplot(plot_cGAN,plot_orig,
+                        title1='Resampled with cGAN and TNode',
+                        title2='original with TNode',
+                        output_path=output
+                        ,zmax=zmax,zmin=zmin,
+                        file_name=file)
+#%%
+thisbscan=160
+plot_cGAN = 10*np.log10(abs(tomint[0,thisbscan,:,:])**2)
+plot_orig = 10*np.log10(abs(tomint[1,thisbscan,:,:])**2)
+zmax=250
+zmin = 160
+file = 'XY_256'
+output = r'C:\Users\diego\Documents\Github\Result fovea cGAN subsampling'
+create_and_save_subplot(plot_cGAN,plot_orig,
+                        title1='Resampled with cGAN and TNode',
+                        title2='original with TNode',
+                        output_path=output
+                        ,zmax=zmax,zmin=zmin,
+                        file_name=file)
+#%%
+thisbscan=160
+plot_cGAN = 10*np.log10(abs(tomint[0,:,thisbscan,:])**2)
+plot_orig = 10*np.log10(abs(tomint[1,:,thisbscan,:])**2)
+zmax=250
+zmin = 160
+file = 'ZY_256'
+output = r'C:\Users\diego\Documents\Github\Result fovea cGAN subsampling'
+create_and_save_subplot(plot_cGAN,plot_orig,
+                        title1='Resampled with cGAN and TNode',
+                        title2='original with TNode',
+                        output_path=output
+                        ,zmax=zmax,zmin=zmin,
+                        file_name=file)
+#%%
+
+filename = '\cGANtomintTNode.tiff'
+tiff_3Dsave(tomint[0,:,:,:],output+filename)
+#%%
+filename = '\OriginaltomintTNode.tiff'
+tiff_3Dsave(tomint[1,:,:,:],output+filename)
+
+
+
+
+
