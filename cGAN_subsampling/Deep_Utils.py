@@ -1,8 +1,61 @@
-
 import numpy as np
+import plotly.graph_objs as go
+from plotly.subplots import make_subplots
+import plotly.io as pio
+import os
+import tifffile as tiff
 
+def tiff_3Dsave(array, filename):
+    tiff.imwrite(filename, array)
 
+def create_and_save_subplot(image1,
+                            image2,
+                            title1,
+                            title2,
+                            output_path,
+                            dpi=300,
+                            zmin=30,
+                            zmax=100,
+                            title_size=32,
+                            title_color='black',
+                            colorscale='gray',
+                            file_name='file'):
+    if not os.path.exists(output_path):
+        os.makedirs(output_path)
+    image1 = np.flipud(image1)
+    image2 = np.flipud(image2)
 
+    fig = make_subplots(rows=1, cols=2)
+
+    fig.add_annotation(dict(text=title1, xref="x1", yref="paper",
+                             x=int(image1.shape[0]/2),
+                             y=1.07,
+                             showarrow=False,
+                             font=dict(size=title_size,color=title_color)))
+    fig.add_annotation(dict(text=title2, xref="x2", yref="paper",
+                            x=int(image1.shape[0]/2),
+                            y=1.07,
+                            showarrow=False,
+                            font=dict(size=title_size,color=title_color)))
+
+    fig.add_trace(go.Heatmap(z=image1, colorscale=colorscale, zmin=zmin, zmax=zmax, showscale=True,
+                             colorbar=dict(y=0.5, len=(image1.shape[0]/(1*image1.shape[0])), yanchor="middle")), row=1, col=1)
+    fig.add_trace(go.Heatmap(z=image2, colorscale=colorscale, zmin=zmin, zmax=zmax, showscale=False), row=1, col=2)
+
+    fig.update_xaxes(scaleanchor = 'x',showticklabels=False, visible=False,showgrid=False)
+    fig.update_yaxes(scaleanchor = 'x',showticklabels=False, visible=False,showgrid=False)
+    
+    fig.update_layout(plot_bgcolor='rgba(0,0,0,0)',
+            margin=dict(l=10, r=10, t=40, b=20),
+            coloraxis_colorbar_x=0.83,
+            font_family="Serif",
+            font_size=24)
+    html_name = '\\'+file_name+'.html'
+    svg_name = file_name+'.svg'
+    # fig.update_layout(title_text="Subplot of Two Images")
+    pio.write_image(fig, os.path.join(output_path, svg_name), format="svg", scale=dpi/72)
+    fig.write_html(output_path + html_name)
+    fig.show(renderer = 'svg+notebook')
 
 def sliding_window(image, window_size, step_size):
     """
@@ -49,7 +102,6 @@ def sliding_window(image, window_size, step_size):
     # Return the list of smaller images
     smaller_images=np.array(smaller_images)
     return smaller_images
-
 
 def inv_sliding_window(arr,window_size, original_size, step_size):
     """
