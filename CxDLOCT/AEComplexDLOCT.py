@@ -13,6 +13,7 @@ from sklearn.model_selection import train_test_split
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Input, Conv1D, MaxPooling1D, UpSampling1D
 from sklearn.preprocessing import StandardScaler
+from tensorflow import keras
 
 #%% Def Functions
 def reconstruct_tomogram(fringes1, zeroPadding=0, noiseFloorDb=0,z=2):
@@ -56,8 +57,8 @@ def plot_images(array1, array2, zmin, zmax,tittle,save=False):
         fig.write_html(tittle +'.html')
     fig.show()
 #%% Reading Data
-#path = r'C:\Users\diego\Documents\Github\Simulated_Data_Complex'
-path = r'/home/haunted/Projects/DLOCT/CxDLOCT/Simulated_Data_Complex'
+path = r'C:\Users\diego\Documents\Github\Simulated_Data_Complex'
+# path = r'/home/haunted/Projects/DLOCT/CxDLOCT/Simulated_Data_Complex'
 os.chdir(path)
 fringes = []
 for filename in os.listdir(os.getcwd()):
@@ -91,7 +92,7 @@ fig.add_trace(go.Scatter(y=np.imag(fringes1[:,1,1]), mode='lines', name='Imagina
 fig.show()
 #%% Preprocessing section
 fringes_transpose = np.transpose(trainfringes,axes=[1,2,3,0])
-real_fringes = np.real(fringes_transpose)
+real_fringes = abs(fringes_transpose)*np.cos(np.angle(fringes_transpose))
 hilbert_fringes = hilbert(real_fringes,axis=0)
 #%%
 fig = go.Figure()
@@ -139,32 +140,32 @@ print("Training set shape for X:", X_train.shape)
 print("Testing set shape for X:", X_test.shape)
 print("Training set shape for y:", y_train.shape)
 print("Testing set shape for y:", y_test.shape)
-#%%
+#%% Auto encoder
 input_signal = Input(shape=(256, 2))
 # Encoder
-x = Conv1D(16, 3, activation="relu", padding="same")(input_signal) 
+x = Conv1D(64, 3, activation="relu", padding="same")(input_signal)
 x = MaxPooling1D(2, padding="same")(x)
-x = Conv1D(8, 3, activation="relu", padding="same")(x)
-encoded = MaxPooling1D(2, padding="same")(x) 
-
-# At this point the representation is compressed
-
-# Decoder
-x = Conv1D(8, 3, activation="relu", padding="same")(encoded)
-x = UpSampling1D(2)(x)
+x = Conv1D(32, 3, activation="relu", padding="same")(x)
+x = MaxPooling1D(2, padding="same")(x)
 x = Conv1D(16, 3, activation="relu", padding="same")(x)
+encoded = MaxPooling1D(2, padding="same")(x) 
+# Decoder
+x = Conv1D(16, 3, activation="relu", padding="same")(encoded)
 x = UpSampling1D(2)(x)
-decoded = Conv1D(2, 3, activation="sigmoid", padding="same")(x)
-
+x = Conv1D(32, 3, activation="relu", padding="same")(x)
+x = UpSampling1D(2)(x)
+x = Conv1D(64, 3, activation="relu", padding="same")(x)
+x = UpSampling1D(2)(x)
+decoded = Conv1D(2, 3, activation="tanh", padding="same")(x)
 autoencoder = Model(input_signal, decoded)
-autoencoder.compile(optimizer='adam', loss='MeanSquaredError',metrics=['accuracy'])
+autoencoder.compile(optimizer=keras.optimizers.RMSprop(lr=0.001), loss='MeanSquaredError',metrics=['accuracy'])
 autoencoder.summary()
 #%%
 # validation_data = [X_train, y_train]
 autoencoder.fit(X_train, y_train, epochs=50, batch_size=128, validation_data=[X_test, y_test])
 
 #%% predict
-real_fringes_test = testfringes.real
+real_fringes_test = abs(testfringes)*np.cos(np.angle(testfringes))
 hilbert_fringes_test = hilbert(real_fringes_test)
 data_test = np.stack((real_fringes_test, hilbert_fringes_test.imag), axis=-1)
 data_test = data_test.reshape(256, -1, 2)

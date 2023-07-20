@@ -33,7 +33,7 @@ create_and_save_subplot(plot_cGAN,plot_orig,
                         file_name=file)
 #%%
 thisbscan=160
-plot_cGAN = 10*np.log10(abs(tomint[0,thisbscan,:,:])**2)
+plot_cGAN = 10*np.log10(abs(tomint[2,thisbscan,:,:])**2)
 plot_orig = 10*np.log10(abs(tomint[1,thisbscan,:,:])**2)
 zmax=250
 zmin = 160
@@ -60,14 +60,7 @@ create_and_save_subplot(plot_cGAN,plot_orig,
                         ,zmax=zmax,zmin=zmin,
                         file_name=file)
 #%%
-
 filename = '\cGANtomintTNode.tiff'
 tiff_3Dsave(tomint[0,:,:,:],output+filename)
-#%%
 filename = '\OriginaltomintTNode.tiff'
 tiff_3Dsave(tomint[1,:,:,:],output+filename)
-
-
-
-
-
