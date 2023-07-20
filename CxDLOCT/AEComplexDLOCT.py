@@ -181,7 +181,7 @@ predicted = (predictions_original_scale[:,:,:,0]+1j*predictions_original_scale[:
 #%%
 
 tom1True,tom1 = reconstruct_tomogram(predicted)
-tom2True,tom2 = reconstruct_tomogram(testfringes)
+tom2True,tom2 = reconstruct_tomogram(real_fringes_test)
 
 plot_predicted = 10*np.log10(abs(tom1[:,:,0])**2)
 plot_target = 10*np.log10(abs(tom2[:,:,0])**2)
