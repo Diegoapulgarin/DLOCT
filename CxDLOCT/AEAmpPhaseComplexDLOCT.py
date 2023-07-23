@@ -96,6 +96,14 @@ fringes_transpose = np.transpose(trainfringes,axes=[1,2,3,0])
 real_fringes = abs(fringes_transpose)*np.cos(np.angle(fringes_transpose))
 # estmation of complex signal from real part of the intensity
 hilbert_fringes = hilbert(real_fringes,axis=0)
+complex_estimation = real_fringes + 1j*hilbert_fringes.imag
+amp_fringes = abs(complex_estimation)
+phase_fringes = np.angle(complex_estimation)
+
+yamp_fringes = abs(fringes_transpose)
+yphase_fringes = np.angle(fringes_transpose)
+
+
 #%%
 # fig = go.Figure()
 # fig.add_trace(go.Scatter(y=real_fringes[:,0,0,thisfringes], mode='lines', name='Real Part'))
@@ -106,7 +114,7 @@ hilbert_fringes = hilbert(real_fringes,axis=0)
 #%%
 scaler = StandardScaler()
 aline = 4096*5
-xdata = np.stack((real_fringes, hilbert_fringes.imag), axis=-1)
+xdata = np.stack((amp_fringes, phase_fringes), axis=-1)
 xdata = xdata.reshape(256, -1, 2)
 xdata = np.transpose(xdata,axes=[1,0,2])
 # Reshape data to 2D
@@ -119,7 +127,7 @@ xdata_standardized = scaler.fit_transform(xdata_reshaped)
 xdata_standardized = xdata_standardized.reshape(num_samples, num_alines, num_channels)
 
 
-ydata = np.stack((fringes_transpose.real, fringes_transpose.imag), axis=-1)
+ydata = np.stack((yamp_fringes, yphase_fringes), axis=-1)
 ydata = ydata.reshape(256, -1, 2)
 ydata = np.transpose(ydata,axes=[1,0,2])
 
@@ -127,7 +135,7 @@ ydata = np.transpose(ydata,axes=[1,0,2])
 num_samples, num_alines, num_channels = ydata.shape
 ydata_reshaped = xdata.reshape(num_samples * num_alines, num_channels)
 # Apply StandardScaler
-ydata_standardized = scaler.transform(ydata_reshaped)
+ydata_standardized = scaler.fit_transform(ydata_reshaped)
 # Reshape back to original shape
 ydata_standardized = ydata_standardized.reshape(num_samples, num_alines, num_channels)
 
@@ -170,7 +178,9 @@ autoencoder.fit(X_train, y_train, epochs=50, batch_size=128, validation_data=[X_
 real_fringes_test = abs(testfringes)*np.cos(np.angle(testfringes))
 hilbert_fringes_test = hilbert(real_fringes_test)
 pcomplex_estimation = real_fringes_test + 1j*hilbert_fringes_test.imag
-data_test = np.stack((pcomplex_estimation.real, pcomplex_estimation.imag), axis=-1)
+amp_fringes_test = abs(pcomplex_estimation)
+phase_fringes_test = np.angle(pcomplex_estimation)
+data_test = np.stack((amp_fringes_test, phase_fringes_test), axis=-1)
 data_test = data_test.reshape(256, -1, 2)
 data_test = np.transpose(data_test,axes=[1,0,2])
 
@@ -179,12 +189,44 @@ predictions = autoencoder.predict(data_test_standardized)
 
 predictions_original_scale = scaler.inverse_transform(predictions.reshape(-1, predictions.shape[-1])).reshape(predictions.shape)
 predictions_original_scale = predictions_original_scale.transpose(1, 0, 2).reshape(256,256,16,2)
-predicted = predictions_original_scale[:,:,:,0]+1j*predictions_original_scale[:,:,:,1]
+complex_predicted = predictions_original_scale[:,:,:,0]*np.exp(1j*predictions_original_scale[:,:,:,1])
 #%%
 
-tom1True,tom1 = reconstruct_tomogram(predicted)
+tom1True,tom1 = reconstruct_tomogram(complex_predicted)
 tom2True,tom2 = reconstruct_tomogram(real_fringes_test)
 
+plot_predicted = 10*np.log10(abs(tom1[:,:,0])**2)
+plot_target = 10*np.log10(abs(tom2[:,:,0])**2)
+
+plot_images(plot_target,plot_predicted,70,150,'Original vs predicted')
+#%%
+phase_original = np.angle(testfringes)
+amp_original = abs(testfringes)
+bscan = 10
+plot_phase_predicted = predictions_original_scale[:,:,bscan,1]
+plot_phase_original = phase_original[:,:,bscan]
+zmax= np.max(phase_original)
+zmin = np.min(phase_original)
+plot_images(plot_phase_predicted,plot_phase_original,zmin,zmax,'Phase comparision')
+# %%
+plot_amp_predicted = predictions_original_scale[:,:,bscan,0]
+plot_amp_original = amp_original[:,:,bscan]
+plot_amp_estimated = amp_fringes_test[:,:,bscan]
+zmax= np.max(amp_original)
+zmin = np.min(amp_original)
+plot_images(plot_amp_estimated,plot_amp_original,zmin,zmax,'amplitude comparision')
+
+# %%
+complex_predicted2 = amp_fringes_test*np.exp(1j*predictions_original_scale[:,:,:,1])
+tom1True,tom1 = reconstruct_tomogram(complex_predicted2)
+plot_predicted = 10*np.log10(abs(tom1[:,:,0])**2)
+plot_target = 10*np.log10(abs(tom2[:,:,0])**2)
+
+plot_images(plot_target,plot_predicted,70,150,'Original vs predicted')
+# %%
+
+complex_original = amp_original*np.exp(1j*phase_original)
+tom1True,tom1 = reconstruct_tomogram(complex_original)
 plot_predicted = 10*np.log10(abs(tom1[:,:,0])**2)
 plot_target = 10*np.log10(abs(tom2[:,:,0])**2)
 

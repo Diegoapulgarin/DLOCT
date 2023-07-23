@@ -82,6 +82,7 @@ fig.add_trace(go.Line(y=fft_aline,name= 'fft complex fringe'),row=2,col=1)
 fig.add_trace(go.Line(y=fft_real,name='fft real fringe'),row=3,col=1)
 fig.add_trace(go.Line(y=fft_rec,name='fft recovered signal'),row=4,col=1)
 fig.show()
+fig.write_html(r'C:\Users\diego\Documents\Github\EDA.html')
 # %%
 hil_aline = hilbert(intensity)
 recovered2 = abs(intensity)*np.exp(1j*hil_aline.imag)
