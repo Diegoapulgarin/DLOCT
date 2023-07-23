@@ -83,4 +83,11 @@ fig.add_trace(go.Line(y=fft_real,name='fft real fringe'),row=3,col=1)
 fig.add_trace(go.Line(y=fft_rec,name='fft recovered signal'),row=4,col=1)
 fig.show()
 # %%
+hil_aline = hilbert(intensity)
+recovered2 = abs(intensity)*np.exp(1j*hil_aline.imag)
 diff = intensity - recsignal.real
+fft_hil = abs(fftshift(fft(recsignal)))
+fig = sp.make_subplots(rows=3,cols=1)
+fig.add_trace(go.Line(y=diff,name='real signal difference'),row=1,col=1)
+fig.add_trace(go.Line(y=recsignal.imag, name='Original phase'),row=2,col=1)
+fig.add_trace(go.Line(y=fft_hil,name = 'estimated signal'),row=3,col=1)
