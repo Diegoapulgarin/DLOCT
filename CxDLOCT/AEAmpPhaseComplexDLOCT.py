@@ -62,6 +62,7 @@ path = r'C:\Users\diego\Documents\Github\Simulated_Data_Complex'
 os.chdir(path)
 fringes = []
 for filename in os.listdir(os.getcwd()):
+   print(path+'/'+filename)
    mat_contents = sio.loadmat(path+'/'+filename)
    fringes1 = mat_contents['fringes1']
    divisions = int(fringes1.shape[2]/16)
@@ -168,7 +169,7 @@ x = Conv1D(64, 3, activation="relu", padding="same")(x)
 x = UpSampling1D(2)(x)
 decoded = Conv1D(2, 3, activation="tanh", padding="same")(x)
 autoencoder = Model(input_signal, decoded)
-autoencoder.compile(optimizer=keras.optimizers.RMSprop(learning_rate=0.001), loss='MeanSquaredError',metrics=['accuracy'])
+autoencoder.compile(optimizer=keras.optimizers.RMSprop(learning_rate=0.01), loss='MeanSquaredError',metrics=['accuracy'])
 autoencoder.summary()
 #%%
 # validation_data = [X_train, y_train]

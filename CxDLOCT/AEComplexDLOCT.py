@@ -86,7 +86,7 @@ tom2True,tom2 = reconstruct_tomogram(np.real(fringes1),z=4)
 plot_real = 10*np.log10(abs(tom1[:,:,0])**2)
 plot_twin = 10*np.log10(abs(tom2[:,:,0])**2)
 
-plot_images(plot_real,plot_twin,50,150,'comaprision between bscan with and without twin image')
+plot_images(plot_real,plot_twin,50,150,'comaprision between bscan with and without twin image',save=True)
 fig = go.Figure()
 fig.add_trace(go.Scatter(y=np.real(fringes1[:,1,1]), mode='lines', name='Real Part'))
 fig.add_trace(go.Scatter(y=np.imag(fringes1[:,1,1]), mode='lines', name='Imaginary Part'))
@@ -160,7 +160,7 @@ x = Conv1D(64, 3, activation="relu", padding="same")(x)
 x = UpSampling1D(2)(x)
 decoded = Conv1D(2, 3, activation="tanh", padding="same")(x)
 autoencoder = Model(input_signal, decoded)
-autoencoder.compile(optimizer=keras.optimizers.RMSprop(learning_rate=0.001), loss='MeanSquaredError',metrics=['accuracy'])
+autoencoder.compile(optimizer=keras.optimizers.RMSprop(learning_rate=0.01), loss='MeanSquaredError',metrics=['accuracy'])
 autoencoder.summary()
 #%%
 # validation_data = [X_train, y_train]
@@ -188,4 +188,4 @@ tom2True,tom2 = reconstruct_tomogram(real_fringes_test)
 plot_predicted = 10*np.log10(abs(tom1[:,:,0])**2)
 plot_target = 10*np.log10(abs(tom2[:,:,0])**2)
 
-plot_images(plot_target,plot_predicted,70,150,'Original vs predicted')
+plot_images(plot_target,plot_predicted,70,150,'Original vs predicted',save=True)
