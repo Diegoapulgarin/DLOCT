@@ -15,15 +15,16 @@ set(0, 'DefaultAxesFontSize', 20)
 curFig = 10;
 
 %% Parameters of the simulation
+
 % Tomogram number of points
 nZ = 512; % axial, number of pixels per A-line, accounting for zero-padding
 nX = 256 + 32; % fast scan axis, number of A-lines per B-scan
 nY = 1; % slow scan axis, number of B-scans per tomogram
-nK = 400; % Number of samples, <= nZ, difference is zero padding
+nK = nZ; % Number of samples, <= nZ, difference is zero padding
 xNyquistOversampling = 1; % Galvo sampling factor. 1->Nyquist
 nXOversampling = nX; % Number of Alines for oversampling PSF <= nX, difference is zero padding
 
-useGPU = false;
+useGPU = true;
 
 % Spectral parameters
 wavelength = 1.310e-6; % Source central wavelength
@@ -118,6 +119,8 @@ objYRange = nY - 0;
 objRange = [objZRange, objXRange];
 layeredObj = true;
 
+
+
 if layeredObj
   % Porcentaje length of each layer
   layerPrcts = [5 20 5 10 5 5 2 5 43];
@@ -144,6 +147,9 @@ else
   % Amplitude of scatterers
   objAmp = ones(1, 1, nPointSource, varType{:}); % All ones by default
 end
+
+
+
 
 % Just to visualize point scatterers, offset to nZ / 2 to index matrix
 % correctly due to complex fringes. Coerce is important because sometimes
