@@ -53,9 +53,9 @@ def create_and_save_subplot(image1,
     html_name = '\\'+file_name+'.html'
     svg_name = file_name+'.svg'
     # fig.update_layout(title_text="Subplot of Two Images")
-    pio.write_image(fig, os.path.join(output_path, svg_name), format="svg", scale=dpi/72)
+    # pio.write_image(fig, os.path.join(output_path, svg_name), format="svg", scale=dpi/72)
     fig.write_html(output_path + html_name)
-    fig.show(renderer = 'svg+notebook')
+    fig.show()
 
 def sliding_window(image, window_size, step_size):
     """

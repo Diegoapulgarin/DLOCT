@@ -1,0 +1,5 @@
+{
+    "python.analysis.extraPaths": [
+        "./cGAN_subsampling/Functions"
+    ]
+}
