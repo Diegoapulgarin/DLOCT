@@ -2,12 +2,8 @@
 """
 Created on Wed Jan 18 12:45:10 2023
 
-@author: diego
+@author: Diego PulgarÃ­n
 """
-#%%
-import sys
-sys.path.append(r'C:\Data\DLOCT\cGAN_subsampling\Functions')
-from os.path import abspath
 from os import sep
 
 from numpy import load
@@ -30,20 +26,16 @@ from keras.layers import Dropout
 from keras.layers import BatchNormalization
 from keras.layers import ReLU
 
-# from matplotlib import pyplot
+from matplotlib import pyplot
 from Utils import LoadData, logScaleSlices, downSampleSlices
-
 from datetime import datetime
 from tensorflow.python.keras.callbacks import TensorBoard, ModelCheckpoint, EarlyStopping
-
-# import pydot
-# import graphviz 
-from keras.utils import plot_model
 import numpy as np
 
 import tensorflow as tf
 import tensorflow.image as timg
 import tensorflow.keras.backend as K
+from Deep_Utils import simple_sliding_window
 #%% custom loss function
 
 def ssim_loss(y_true, y_pred):
@@ -183,7 +175,7 @@ def define_generator(image_shape):
     init = RandomNormal(stddev=0.02)
     # image input
     in_image = Input(shape=image_shape)
-    # encoder model -> Secuencia de Convolución y activación -> Encoder ascendente
+    # encoder model -> Secuencia de ConvoluciÃ³n y activaciÃ³n -> Encoder ascendente
     e1 = define_encoder_block(in_image, 64, batchnorm=False)
     e2 = define_encoder_block(e1, 128)
     e3 = define_encoder_block(e2, 256)
@@ -194,7 +186,7 @@ def define_generator(image_shape):
     # bottleneck, no batch norm and relu
     b = Conv2D(512, (4,4), strides=(2,2), padding='same', kernel_initializer=init)(e6)
     b = Activation('relu')(b)
-    # decoder model -> Secuencia de Convolución y activación -> Decoder descendente
+    # decoder model -> Secuencia de ConvoluciÃ³n y activaciÃ³n -> Decoder descendente
     d1 = decoder_block(b, e6, 512)
     d2 = decoder_block(d1, e5, 512)
     d3 = decoder_block(d2, e4, 512)
@@ -222,8 +214,8 @@ def define_gan(g_model, d_model, image_shape):
     # src image as input, generated image and classification output
     model = Model(in_src, [dis_out, gen_out])
     # compile model
-    opt = Adam(learning_rate=0.0002, beta_1=0.5)
-    model.compile(loss=[power_spectrum_loss], optimizer=opt, loss_weights=None) # =['mean_squared_error', 'mae']
+    opt = RMSprop(learning_rate=0.0002, beta_1=0.5)
+    model.compile(loss=['mean_squared_error', 'mae'], optimizer=opt, loss_weights=None) # =['mean_squared_error', 'mae']
     return model
     
 # load and prepare training images
@@ -248,7 +240,7 @@ def generate_real_samples(dataset, n_samples, patch_shape,slicesmin,slicesmax):
     # slice max and min
     smax = slicesmax[ix]
     smin = slicesmin[ix]
-    # generate ✬real✬ class labels (1)
+    # generate âœ¬realâœ¬ class labels (1)
     y = ones((n_samples, patch_shape, patch_shape, 1))
     return [X1, X2], y ,smin,smax
     
@@ -256,7 +248,7 @@ def generate_real_samples(dataset, n_samples, patch_shape,slicesmin,slicesmax):
 def generate_fake_samples(g_model, samples, patch_shape):
     # generate fake instance
     X = g_model.predict(samples)
-    # create ✬fake✬ class labels (0)
+    # create âœ¬fakeâœ¬ class labels (0)
     y = zeros((len(X), patch_shape, patch_shape, 1))
     return X, y
 
@@ -268,13 +260,6 @@ def summarize_performance(step, g_model, dataset, n_samples=3):
                                                             slicesmax)
     # generate a batch of fake samples
     X_fakeB, _ = generate_fake_samples(g_model, X_realA, 1)
-    # scale all pixels from [-1,1] to [0,1]
-# =============================================================================
-#     X_realA = (X_realA + 1) / 2.0
-#     X_realB = (X_realB + 1) / 2.0
-#     X_fakeB = (X_fakeB + 1) / 2.0
-# =============================================================================
-
     vmin=100
     vmax=180
     # plot real source images
@@ -300,11 +285,11 @@ def summarize_performance(step, g_model, dataset, n_samples=3):
         pyplot.imshow(plot2, cmap='gray', vmin=vmin, vmax=vmax)    
         print(smin[i],',',smax[i])
     # save plot to file
-    filename1 = 'plot_%06d.png' % (step+1)
+    filename1 = '/home/dapulgaris/Models/cGAN_1/plot_%06d.png' % (step+1)
     pyplot.savefig(filename1)
     pyplot.close()
     # save the generator model
-    filename2 = 'model_%06d.h5' % (step+1)
+    filename2 = '/home/dapulgaris/Models/cGAN_1/model_%06d.h5' % (step+1)
     g_model.save(filename2)
     print('>Saved: %s and %s' % (filename1, filename2))
 
@@ -356,8 +341,8 @@ def train(d_model, g_model, gan_model, dataset, n_epochs, n_batch=1):
             d_loss1_val = []
             d_loss2_val = []
             g_loss_val  = []
-#%%
-rootFolder = 'D:/DLOCT/TomogramsDataAcquisition/'
+#%% Lectura de tomogramas sinteticos
+rootFolder = '/home/dapulgaris/Data/'
 
 fnameTom_ = ['25-08-2021_09-04_64x256x256_25percent_4/Tomogram_1', # struct 1
             '25-08-2021_09-04_64x256x256_25percent_4/Tomogram_2', # struct 1
@@ -396,14 +381,45 @@ strideY = slidingYSize
 # Model parameters
 image_shape = (slidingXSize, slidingYSize, 2)
 
-
 # """ Loading data """
 
 slices, _, _= LoadData(rootFolder, slidingXSize,
              slidingYSize,strideX, strideY, fnameTomData)
+
+path = r'D:\DLOCT\TomogramsDataAcquisition\Optic Nerve'
+filename = '[p.SHARP][s.OpticNerve1a][10-16-2019_14-24-18]_TomInt_z=(251..954)_x=(17..944)_y=(1..960)'
+real = '_real.bin'
+imag = '_imag.bin'
+tom = np.fromfile(path+'\\'+filename+real,'single')
+tom = np.reshape(tom,(704,928,960,2),order='F')
+tom =np.sum(tom,axis=3)
+tomi = np.fromfile(path+'\\'+filename+imag,'single')
+tomi = np.reshape(tomi,(704,928,960,2),order='F')
+tomi =np.sum(tomi,axis=3)
+tomData = np.stack((tom, tomi), axis=3)
+del tom, tomi
+pad_dim1 = 128 - (tomData.shape[1] % 128) if tomData.shape[1] % 128 != 0 else 0
+pad_dim2 = 128 - (tomData.shape[2] % 128) if tomData.shape[2] % 128 != 0 else 0
+padding = ((0, 0),  # No relleno para la primera dimensión
+           (0, pad_dim1),  # Relleno para la segunda dimensión
+           (0, pad_dim2),  # Relleno para la tercera dimensión
+           (0, 0))  # No relleno para la cuarta dimensión
+tomData = np.pad(tomData, pad_width=padding, mode='edge')
+print(tomData.shape)
+tomShape = np.shape(tomData)
+slidingYSize = 128
+slidingXSize = 128
+strideY = 128
+strideX = 128
+slices2 = simple_sliding_window(tomData,tomShape,slidingYSize,slidingXSize,strideY,strideX)
+slices = np.concatenate((slices, slices2), axis=0)
+del slices2, tomData
+
 #%%
-logslices, slicesMax, slicesMin = logScaleSlices(slices) # transformation of data
+
+logslices, slicesmax, slicesmin = logScaleSlices(slices) # transformation of data
 logslicesUnder = downSampleSlices(logslices) # erasing rows and adding zeros
+
 #%%
 # define the models
 d_model = define_discriminator(image_shape)
@@ -412,19 +428,7 @@ g_model = define_generator(image_shape)
 gan_model = define_gan(g_model, d_model, image_shape)
 
 #%%
-img_filed= './d_model.png'
-img_fileg = './g_model.png'
-img_filegan = './gan_model.png'
-
-plot_model(d_model, to_file=img_filed, show_shapes=True, show_layer_names=True)
-plot_model(g_model, to_file=img_fileg, show_shapes=True, show_layer_names=True)
-plot_model(gan_model, to_file=img_filegan, show_shapes=True, show_layer_names=True)
-
-#%%
-test = 1000
-slicesmin = slicesMin[:,:,:]
-slicesmax = slicesMax[:,:,:]
-dataset=[logslicesUnder[0:test,:,:,:],logslices[0:test,:,:,:]]
+dataset=[logslicesUnder,logslices]
 
 #%%
 # train model
@@ -432,70 +436,10 @@ d_loss1_epoch = []
 d_loss2_epoch = []
 g_loss_epoch  = []
 n_steps_epoch = []
-n_epochs = 10
+n_epochs = 100
 train(d_model, g_model, gan_model, dataset,n_epochs)
-#%%
-# =============================================================================
-# # saving models
-# gan_model.save(r'C:\Users\diego\OneDrive - Universidad EAFIT\Eafit\Trabajo de grado\OCT_Advanced_Postprocessing_copia\Analysis\DLOCT\Saved_model_cGANSub\gan_model_short')
-# d_model.save(r'C:\Users\diego\OneDrive - Universidad EAFIT\Eafit\Trabajo de grado\OCT_Advanced_Postprocessing_copia\Analysis\DLOCT\Saved_model_cGANSub\d_model_short')
-# g_model.save(r'C:\Users\diego\OneDrive - Universidad EAFIT\Eafit\Trabajo de grado\OCT_Advanced_Postprocessing_copia\Analysis\DLOCT\Saved_model_cGANSub\g_model_short')
-# =============================================================================
-#%%
-figure, axs = pyplot.subplots(1,2)
-axs[0].plot(n_steps_epoch,d_loss1_epoch,label='Real Data')
-axs[0].plot(n_steps_epoch,d_loss2_epoch,label='fake Data')
-axs[1].plot(n_steps_epoch,g_loss_epoch,label='Generator')
-axs[0].legend()
-axs[1].legend()
-np.save('d_loss1', d_loss1_epoch)
-np.save('d_loss2', d_loss2_epoch)
-np.save('g_loss',  g_loss_epoch)
-np.save('n_epochs', n_epochs)
 
-#%%
-# =============================================================================
-# s = 300
-# vmin=100
-# vmax=180
-# test = logslices[s,:,:,:]
-# plot = inverseLogScaleSlices(test, slicesMax[s,:,:], slicesMin[s,:,:])
-# pyplot.imshow(10 * np.log10(abs(plot[:,:,0]+1j*plot[:,:,1])**2), cmap='gray', vmin=vmin, vmax=vmax)
-# 
-# =============================================================================
-#%% Comprobación de función
-# =============================================================================
-# vmin=100
-# vmax=180
-# [X_realA, X_realB], _,smin,smax = generate_real_samples(dataset, 3, 1,slicesMin,slicesmax)
-# X_fakeB, y_fake = generate_fake_samples(g_model, X_realA, 1)
-# n_samples = 3
-# for i in range(n_samples):
-#     
-#     
-#     invslice = inverseLogScaleSlices(X_realA[i], smax[i,:,:], smin[i,:,:])
-#     plot = 10*np.log10(abs(invslice[:,:,0]+1j*invslice[:,:,1])**2)
-#     pyplot.subplot(3, n_samples, 1 + i)
-#     pyplot.axis('off')
-#     pyplot.imshow(plot, cmap='gray', vmin=vmin, vmax=vmax)
-#     
-#     
-#     invslice1 = inverseLogScaleSlices(X_fakeB[i], smax[i,:,:], smin[i,:,:])
-#     plot1 = 10*np.log10(abs(invslice1[:,:,0]+1j*invslice1[:,:,1])**2)
-#     pyplot.subplot(3, n_samples, 1 + n_samples + i)
-#     pyplot.axis('off')
-#     pyplot.imshow(plot1, cmap='gray', vmin=vmin, vmax=vmax)
-#     
-#     invslice2 = inverseLogScaleSlices(X_realB[i], smax[i,:,:], smin[i,:,:])
-#     plot2 = 10*np.log10(abs(invslice2[:,:,0]+1j*invslice2[:,:,1])**2)
-#     pyplot.subplot(3, n_samples, 1 + n_samples*2 + i)
-#     pyplot.axis('off')
-#     pyplot.imshow(plot2, cmap='gray', vmin=vmin, vmax=vmax)
-#     
-#     print(smin[i],',',smax[i])
-# =============================================================================
-#%%
-
-
-
-
+np.save('/home/dapulgaris/Models/cGAN_1/d_loss1', d_loss1_epoch)
+np.save('/home/dapulgaris/Models/cGAN_1/d_loss2', d_loss2_epoch)
+np.save('/home/dapulgaris/Models/cGAN_1/g_loss',  g_loss_epoch)
+np.save('/home/dapulgaris/Models/cGAN_1/n_epochs', n_epochs)

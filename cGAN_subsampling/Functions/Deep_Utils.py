@@ -222,3 +222,15 @@ def simple_inv_sliding_window(slices, tomShape, slidingYSize, slidingXSize, stri
             slidingYPos = slidingYPos + strideY
     return tomDataOver
 
+def MPS_single(plane,meandim):
+    ftslice = np.fft.ifftshift(np.fft.fft2( np.fft.fftshift(plane)))
+    powerSpectrumSlice = abs(ftslice)**2 / np.max(abs(ftslice)**2)
+    meanPSslice = np.mean(powerSpectrumSlice, axis=meandim)
+    meanPSslice = meanPSslice / np.max(meanPSslice)
+    return meanPSslice
+
+def Powerspectrum(plane):
+    ftslice = np.fft.ifftshift(np.fft.fft2( np.fft.fftshift(plane)))
+    powerSpectrum = abs(ftslice)**2
+    powerSpectrumNorm = abs(ftslice)**2 / np.max(abs(ftslice)**2)
+    return powerSpectrumNorm, powerSpectrum
