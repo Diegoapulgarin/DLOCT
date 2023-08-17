@@ -54,9 +54,9 @@ else:
 #%%
 fig = go.Figure()
 fig.add_trace(go.Line(x= faxis,y=mps_orig,name='Original'))
-fig.add_trace(go.Line(x=faxis,y=mps_reconstructed,name='Reconstructed'))
+fig.add_trace(go.Line(x=faxis,y=mps_reconstructed,name='Predicted'))
 fig.update_layout(legend_title_text = "Tomogram")
-fig.update_xaxes(title_text= r'$\text{Frecuency }\text{mm}^{-1}$')
+fig.update_xaxes(title_text= r'$\text{Frecuency }\text{[mm]}^{-1}$')
 fig.update_yaxes(title_text="Y profile [dB]")
 fig.write_html(pathcGAN+'\\'+'mps.html')
 fig.show()
