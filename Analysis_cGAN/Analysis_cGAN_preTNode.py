@@ -27,4 +27,18 @@ filename = 'tomDataOverpol'
 mat_contents = sio.loadmat(pathcGAN+'\\'+filename+'1')
 tomDataOver1 = mat_contents['tomDataOver']
 tomDataover = np.stack((tomDataOver0,tomDataOver1),axis=3)
+tomDataover = np.sum(tomDataover,axis=3)
+enface_over = tomDataover[z,:,:]
 #%%
+del tomDataover, tomDataOver0, tomDataOver1
+#%%
+plot_orig = 10*np.log10(abs(enface_original)**2)
+plot_over = 10*np.log10(abs(enface_over)**2)
+create_and_save_subplot(plot_orig,plot_over,
+                        'Original','Reconstructed',
+                        pathcGAN,zmin=30,zmax=150)
+
+#%%
+mps_orig = MPS_single(enface_original,meandim=0)
+mps_reconstructed = MPS_single(enface_over,meandim=0)
+
