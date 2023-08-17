@@ -18,21 +18,13 @@ tomimag = np.sum(tomimag,axis=3)
 z = 128
 enface_original = tomreal[z,:,:]+1j*tomimag[z,:,:]
 del tomimag, tomreal
-#%%
-pathcGAN = r'D:\DLOCT\TomogramsDataAcquisition\Fovea\Motion_corrected\cGAN1'
+#%% predicted by network
+pathcGAN = r'D:\DLOCT\TomogramsDataAcquisition\Fovea\Motion_corrected\cGAN_dr'
 filename = 'tomDataOverpol'
 mat_contents = sio.loadmat(pathcGAN+'\\'+filename+'0')
 tomDataOver0 = mat_contents['tomDataOver']
 filename = 'tomDataOverpol'
 mat_contents = sio.loadmat(pathcGAN+'\\'+filename+'1')
 tomDataOver1 = mat_contents['tomDataOver']
-tomDataover = np.zeros((586,896,960,2))
-tomDataover[:,:,:,0] = tomDataOver0
-tomDataover[:,:,:,1] = tomDataOver1
-tomDataover
+tomDataover = np.stack((tomDataOver0,tomDataOver1),axis=3)
 #%%
-
-#%%
-
-mat_contents = sio.loadmat(path+'/'+filename)
-fringes1 = mat_contents['fringes1']

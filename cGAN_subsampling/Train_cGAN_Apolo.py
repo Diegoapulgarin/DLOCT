@@ -1,3 +1,4 @@
+#%%
 # -*- coding: utf-8 -*-
 """
 Created on Wed Jan 18 12:45:10 2023
@@ -5,7 +6,8 @@ Created on Wed Jan 18 12:45:10 2023
 @author: Diego PulgarÃ­n
 """
 from os import sep
-
+import sys
+sys.path.append(r'C:\Data\DLOCT\cGAN_subsampling\Functions')
 from numpy import load
 from numpy import zeros
 from numpy import ones
@@ -342,8 +344,8 @@ def train(d_model, g_model, gan_model, dataset, n_epochs, n_batch=1):
             d_loss2_val = []
             g_loss_val  = []
 #%% Lectura de tomogramas sinteticos
-rootFolder = '/home/dapulgaris/Data/'
-
+# rootFolder = '/home/dapulgaris/Data/'
+rootFolder = 'D:/DLOCT/TomogramsDataAcquisition/'
 fnameTom_ = ['25-08-2021_09-04_64x256x256_25percent_4/Tomogram_1', # struct 1
             '25-08-2021_09-04_64x256x256_25percent_4/Tomogram_2', # struct 1
             '25-08-2021_09-04_64x256x256_25percent_4/Tomogram_3', # struct 1
@@ -385,17 +387,17 @@ image_shape = (slidingXSize, slidingYSize, 2)
 
 slices, _, _= LoadData(rootFolder, slidingXSize,
              slidingYSize,strideX, strideY, fnameTomData)
-
+#%%
 path = r'D:\DLOCT\TomogramsDataAcquisition\Optic Nerve'
-filename = '[p.SHARP][s.OpticNerve1a][10-16-2019_14-24-18]_TomInt_z=(251..954)_x=(17..944)_y=(1..960)'
+filename = '[p.SHARP][s.OpticNerve1a][10-16-2019_14-24-18]_Tom_z=(196..295)_x=(17..944)_y=(1..960)'
 real = '_real.bin'
 imag = '_imag.bin'
 tom = np.fromfile(path+'\\'+filename+real,'single')
-tom = np.reshape(tom,(704,928,960,2),order='F')
-tom =np.sum(tom,axis=3)
+tom = np.reshape(tom,(100,928,960),order='F')
+
 tomi = np.fromfile(path+'\\'+filename+imag,'single')
-tomi = np.reshape(tomi,(704,928,960,2),order='F')
-tomi =np.sum(tomi,axis=3)
+tomi = np.reshape(tomi,(100,928,960),order='F')
+
 tomData = np.stack((tom, tomi), axis=3)
 del tom, tomi
 pad_dim1 = 128 - (tomData.shape[1] % 128) if tomData.shape[1] % 128 != 0 else 0
