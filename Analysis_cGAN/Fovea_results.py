@@ -35,11 +35,25 @@ ySlice = 587
 zSlice = 586
 tomTNode = np.reshape(tom,(zSlice,xSlice,ySlice),order='F')
 del tom
+
+#%%
+path = r'D:\DLOCT\TomogramsDataAcquisition\Optic Nerve'
+filename = '[p.SHARP][s.OpticNerve1a][10-16-2019_14-24-18]_Tom_z=(196..295)_x=(17..944)_y=(1..960)'
+real = '_real.bin'
+imag = '_imag.bin'
+tom = np.fromfile(path+'\\'+filename+real,'single')
+tom = np.reshape(tom,(100,928,960),order='F')
+
+tomi = np.fromfile(path+'\\'+filename+imag,'single')
+tomi = np.reshape(tomi,(100,928,960),order='F')
+
+tomOn = np.stack((tom, tomi), axis=3)
+del tom, tomi
 #%%
 n=190
-fig = px.imshow(10*np.log10(tomOriginal[n,155:741,187:773]),color_continuous_scale='gray',zmin=70,zmax=160)
+fig = px.imshow(10*np.log10(tomOriginal[n,155:741,187:773]),color_continuous_scale='gray',zmin=80,zmax=115)
 fig.show()
-# fig.write_html('original.html')
+fig.write_html('original.html')
 #%%
 n = 190
 fig = px.imshow(10*np.log10(tomTNode[n,:,:]),color_continuous_scale='gray',zmin=70,zmax=160)
@@ -102,3 +116,24 @@ html_name = '\\'+file_name+'.html'
 # pio.write_image(fig, os.path.join(output_path, svg_name), format="svg", scale=dpi/72)
 fig.write_html(output_path + html_name)
 fig.show()
+
+#%%
+z = 50
+plot1 = 10*np.log10(tomOriginal[n,155:742,186:773])
+plot1 = 10*np.log10(abs(tomOn[z,:,16:944,0]+1j*tomOn[z,:,16:944,1])**2)
+plot2 = 10*np.log10(tomTNode[n,:,:])
+import matplotlib.pyplot as plt
+fig, ax = plt.subplots()
+ax.imshow(plot1, cmap='gray',vmin=80,vmax=110)  # Puedes cambiar 'viridis' por el colormap que prefieras.
+
+
+# Elimina los ejes y bordes blancos
+ax.axis('off')
+plt.subplots_adjust(top=1, bottom=0, right=1, left=0, hspace=0, wspace=0)
+plt.margins(0,0)
+plt.gca().xaxis.set_major_locator(plt.NullLocator())
+plt.gca().yaxis.set_major_locator(plt.NullLocator())
+
+# Guarda la imagen
+plt.savefig("XY_opticNerve_image.png", bbox_inches='tight', pad_inches=0, dpi=300)
+plt.close()
