@@ -129,8 +129,7 @@ dmypy.json
 .pyre/
 
 #personalized
-.png
-.mat
-.py
-.html
-.txt
+*.png
+*.mat
+*.html
+*.txt
