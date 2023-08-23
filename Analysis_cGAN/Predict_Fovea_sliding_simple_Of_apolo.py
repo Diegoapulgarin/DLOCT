@@ -1,7 +1,7 @@
 # %%
-
 # Custom imports
-
+import sys
+sys.path.append(r'C:\Users\USER\Documents\GitHub\DLOCT\cGAN_subsampling\Functions')
 from Utils import logScaleSlices, inverseLogScaleSlices, downSampleSlices
 from Metrics import ownPhaseMetric, ownPhaseMetricCorrected
 from Deep_Utils import simple_sliding_window, simple_inv_sliding_window
@@ -27,17 +27,19 @@ def gaussfit(binscenters, counts, p0):
     return hist_fit, r_squared, popt
 # %%
 
-path = '/home/dapulgaris/Models' #apolo
+path = r'C:\Users\USER\Documents\cGAN_1' #apolo
 
 customObjects = {'ownPhaseMetric': ownPhaseMetric,
                  'ownPhaseMetricCorrected': ownPhaseMetricCorrected}
-model = tf.keras.models.load_model(path+'/model_081920.h5',custom_objects=customObjects)
+#model = tf.keras.models.load_model(path+'/model_081920.h5',custom_objects=customObjects)#cGAN
+# model = tf.keras.models.load_model(path+'\\BestUNetplus_DR30',custom_objects=customObjects)
+model = tf.keras.models.load_model(path+'\\model_829184.h5',custom_objects=customObjects)#cGAN
 
 # %%
 """ Load tomograms"""
-rootFolder = '/home/dapulgaris/Data/' # apolo
-fnameTom = '//[p.SHARP][s.Eye2a][10-09-2019_13-14-42]_TomInt_z=(295..880)_x=(65..960)_y=(1..960)' # fovea
-tomShape = [(586,896,960,2,2)]# porcine cornea
+rootFolder = r'C:\Users\USER\Documents\GitHub\Fovea' # apolo
+fnameTom = '\\[p.SHARP][s.Eye2a][10-09-2019_13-14-42]_TomInt_z=(295..880)_x=(65..960)_y=(1..960)' # fovea
+tomShape = [(586,896,960,2)]# porcine cornea
 # %%
 name = 'Experimental'
 fname = rootFolder + fnameTom
@@ -52,9 +54,9 @@ tomReal = tomReal.reshape(tomShape[0], order='F')  # reshape using
 tomImag = np.fromfile(fnameTomImag[0],'single')
 tomImag = tomImag.reshape(tomShape[0], order='F')  # reshape using
 
-tomDatas = np.stack((tomReal,tomImag), axis=5)
+tomDatas = np.stack((tomReal,tomImag), axis=4)
 del tomImag, tomReal
-tomDatas = np.sum(tomDatas,axis=3) # Z,X,Y,pol1-2,imag-real
+#tomDatas = np.sum(tomDatas,axis=3) # Z,X,Y,pol1-2,imag-real
 
 num_zeros = 64
 pad_width = ((0, 0), (0, 0), (0, num_zeros), (0, 0), (0, 0))
@@ -76,7 +78,7 @@ for i in pol:
     print(np.shape(slices))
     logslices, slicesMax, slicesMin = logScaleSlices(slices)
     logslicesUnder = downSampleSlices(logslices)
-    logslicesOver = np.array(model.predict(logslicesUnder, batch_size=8), dtype='float32')
+    logslicesOver = np.array(model.predict(logslicesUnder, batch_size=4), dtype='float32')
     slicesOver = inverseLogScaleSlices(logslicesOver, slicesMax, slicesMin)
     tomDataOver = simple_inv_sliding_window(slicesOver, tomShape, slidingYSize, slidingXSize, strideY, strideX)
     tomDataOver = tomDataOver[:, :, :tomDataOver.shape[2]-num_zeros,:]
@@ -120,7 +122,7 @@ for i in pol:
                 fftomograma[:, :, :] + 1j*fftomograma[:, :, :], axes=(dim))
             ), axes=(dim)
         )
-    tomDataOverOf = abs(tomDataP)**2
+    tomDataOverOf = tomDataP
     savepath = rootFolder + 'tomDataOverpol'+str(i)+'.mat'
     print(np.shape(tomDataOverOf))
-    savemat(savepath,  )
+    savemat(savepath, {'tomDataOver': tomDataOverOf.astype(np.complex64)})

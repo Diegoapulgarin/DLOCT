@@ -1,6 +1,6 @@
 #%%
 import sys
-sys.path.append(r'C:\Data\DLOCT\cGAN_subsampling\Functions')
+sys.path.append(r'C:\Users\USER\Documents\GitHub\DLOCT\cGAN_subsampling\Functions')
 import numpy as np
 import os
 from Deep_Utils import create_and_save_subplot, tiff_3Dsave

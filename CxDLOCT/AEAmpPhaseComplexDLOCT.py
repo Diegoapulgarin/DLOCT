@@ -57,7 +57,7 @@ def plot_images(array1, array2, zmin, zmax,tittle,save=False):
         fig.write_html(tittle +'.html')
     fig.show()
 #%% Reading Data
-path = r'C:\Users\diego\Documents\Github\Simulated_Data_Complex'
+path = r'C:\Users\USER\Documents\GitHub\Simulated_Data_Complex'
 # path = r'/home/haunted/Projects/DLOCT/CxDLOCT/Simulated_Data_Complex'
 os.chdir(path)
 fringes = []
