@@ -18,10 +18,19 @@ for filename in os.listdir(os.getcwd()):
     tom = tom.reshape((nZBin,nXBin,nYBin),order='F')
     tomint.append(tom)
     del tom
-tomint = np.array(tomint) # 
+tomint = np.array(tomint) 
+#%% complete cGAN 
+path = r'D:\DLOCT\TomogramsDataAcquisition\Fovea\Motion_corrected\Tnode_cGAN_syntetic_opticnerve\z=(1..586)_x=(1..896)_y=(1..960)-nSpec=\Int_8x8x8x0_3x3x3x0_110_0_50_unitary'
+file = 'TNodeIntFlattenRPE.bin'
+nXBin = 896
+nYBin = 960
+nZBin = 586
+tom = np.fromfile(path+'\\'+file,'single')
+tomcGAN = tom.reshape((nZBin,nXBin,nYBin),order='F')
+
 #%%
 thisbscan=256
-plot_cGAN = 10*np.log10(abs(tomint[1,:,:,thisbscan]))
+plot_cGAN = 10*np.log10(abs(tomcGAN[:,155:741,thisbscan+187])**2)
 plot_orig = 10*np.log10(abs(tomint[0,:,:,thisbscan])**2)
 zmax=250
 zmin = 160
@@ -35,7 +44,7 @@ create_and_save_subplot(plot_cGAN,plot_orig,
                         file_name=file)
 #%%
 thisbscan=170
-plot_cGAN = 10*np.log10(abs(tomint[1,thisbscan,:,:]))
+plot_cGAN = 10*np.log10(abs(tomcGAN[thisbscan,155:741,187:773])**2)
 plot_orig = 10*np.log10(abs(tomint[0,thisbscan,:,:])**2)
 zmax=250
 zmin = 160
