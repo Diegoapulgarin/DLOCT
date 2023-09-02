@@ -7,7 +7,7 @@ Created on Wed Jan 18 12:45:10 2023
 """
 from os import sep
 import sys
-sys.path.append(r'C:\Data\DLOCT\cGAN_subsampling\Functions')
+sys.path.append(r'C:\Users\USER\Documents\GitHub\DLOCT\cGAN_subsampling\Functions')
 from numpy import load
 from numpy import zeros
 from numpy import ones
@@ -394,7 +394,6 @@ real = '_real.bin'
 imag = '_imag.bin'
 tom = np.fromfile(path+'\\'+filename+real,'single')
 tom = np.reshape(tom,(100,928,960),order='F')
-
 tomi = np.fromfile(path+'\\'+filename+imag,'single')
 tomi = np.reshape(tomi,(100,928,960),order='F')
 

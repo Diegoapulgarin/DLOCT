@@ -1,7 +1,7 @@
 
-path = 'D:\DLOCT\TomogramsDataAcquisition\Fovea\No_motion_corrected';
-file1 = 'tomDataOver_Fovea_pol1_Overlap.mat';
-file2 = 'tomDataOver_Fovea_pol2_Overlap.mat';
+path = 'C:\Users\USER\Documents\GitHub\Fovea';
+file1 = 'tomDataOverpol0.mat';
+file2 = 'tomDataOverpol1.mat';
 data1 = fullfile(path, file1);
 data2 = fullfile(path, file2);
 tom1 = load(data1);
@@ -15,8 +15,8 @@ tom(:,:,:,2) = tom2;
 %%
 tomint = abs(tom).^2;
 %%
-path = 'C:\Users\labfisica\Documents\OCT_Advanced_Postprocessing\Data\DLOCT\RetinalImaging\Fovea\[p.SHARP][s.Eye2a][10-09-2019_13-14-42]';
-tomIntFilename = '[p.SHARP][s.Eye2a][10-09-2019_13-14-42]_Tomint_z=(295..880)_x=(65..960)_y=(1..960)_reconstructed_Overlap.bin';
+path = 'C:\Users\USER\Documents\GitHub\Fovea';
+tomIntFilename = '[p.SHARP][s.Eye2a][10-09-2019_13-14-42]_Tomint_z=(295..880)_x=(65..960)_y=(1..960)_reconstructed.bin';
 fId1 = fopen(fullfile(path, tomIntFilename), 'w'); % Open
 fwrite(fId1, tomint, 'single'); % Write
 fclose(fId1); % Close

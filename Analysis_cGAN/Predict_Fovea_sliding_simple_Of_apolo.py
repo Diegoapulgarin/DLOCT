@@ -27,7 +27,7 @@ def gaussfit(binscenters, counts, p0):
     return hist_fit, r_squared, popt
 # %%
 
-path = r'C:\Users\USER\Documents\cGAN_1' #apolo
+path = r'C:\Users\USER\Documents\cGAN_1\Models' #apolo
 
 customObjects = {'ownPhaseMetric': ownPhaseMetric,
                  'ownPhaseMetricCorrected': ownPhaseMetricCorrected}
