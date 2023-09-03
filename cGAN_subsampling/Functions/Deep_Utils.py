@@ -4,6 +4,7 @@ from plotly.subplots import make_subplots
 import plotly.io as pio
 import os
 import tifffile as tiff
+import plotly.express as px
 
 def tiff_3Dsave(array, filename):
     tiff.imwrite(filename, array)
@@ -234,3 +235,50 @@ def Powerspectrum(plane):
     powerSpectrum = abs(ftslice)**2
     powerSpectrumNorm = abs(ftslice)**2 / np.max(abs(ftslice)**2)
     return powerSpectrumNorm, powerSpectrum
+
+def Correlation(slices, savename=None):
+    slices = slices[:,:,0] + 1j*slices[:,:,1]
+    
+    correlationx = np.angle(slices[:,1:] * np.conjugate(slices[:,:-1]))
+    correlationy = np.angle(slices[1:, :] * np.conjugate(slices[:-1, :]))
+    stdx = np.std(correlationx)
+    meanx = np.mean(correlationx)
+    
+    stdy = np.std(correlationy)
+    meany = np.mean(correlationy)
+    
+    fig = px.imshow(correlationx,
+                color_continuous_scale='Twilight',
+                title='Correlation X, mean: {:.3f}, std: {:.3f}'.format(meanx, stdx),
+                zmin= -np.pi,
+                zmax = np.pi
+                )
+    fig.update_layout(
+        margin=dict(l=10, r=10, t=40, b=20),
+        coloraxis_colorbar_x=0.83,
+        font_family="Times New Roman",
+        font_size=16,)
+    fig.update_xaxes(showticklabels=False)
+    fig.update_yaxes(showticklabels=False)
+    fig.show(renderer = 'svg+notebook')
+        
+        
+    fig2 = px.imshow(correlationy,
+                color_continuous_scale='Twilight',
+                title='Correlation Y, mean: {:.3f}, std: {:.3f}'.format(meany, stdy),
+                zmin= -np.pi,
+                zmax = np.pi
+                )
+    fig2.update_layout(
+        margin=dict(l=10, r=10, t=40, b=20),
+        coloraxis_colorbar_x=0.83,
+        font_family="Times New Roman",
+        font_size=16,)
+    fig2.update_xaxes(showticklabels=False)
+    fig2.update_yaxes(showticklabels=False)
+    fig2.show(renderer = 'svg+notebook')
+    
+    if savename is not None:
+        fig.write_image(savename + '_CorrelationX.svg')
+        fig2.write_image(savename + '_CorrelationY.svg')
+    return correlationx, correlationy
