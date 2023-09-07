@@ -20,7 +20,7 @@ if gpus:
 
 #%%
 
-root=r'C:\Users\USER\Documents\cGAN_1'
+root=r'C:\Users\USER\Documents\cGAN_2'
 model_folder = '\\Models'
 path = root+model_folder
 savefolder = path
