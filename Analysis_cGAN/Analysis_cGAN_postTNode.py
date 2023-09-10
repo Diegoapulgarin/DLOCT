@@ -4,12 +4,13 @@ sys.path.append(r'C:\Users\USER\Documents\GitHub\DLOCT\cGAN_subsampling\Function
 import numpy as np
 import os
 from Deep_Utils import create_and_save_subplot, tiff_3Dsave
+import plotly.express as px
 #%%
-path = r'D:\DLOCT\TomogramsDataAcquisition\Fovea\Motion_corrected\Final'
+path = r'C:\Users\USER\Documents\GitHub\Fovea\[p.SHARP][s.Eye2a][10-09-2019_13-14-42]\z=(1..586)_x=(1..896)_y=(1..960)-nSpec='
 file = 'TNodeIntFlattenRPE.bin'
-nXBin = 587
-nYBin = 587
 nZBin = 586
+nXBin = 896
+nYBin = 960
 tomint =[] 
 os.chdir(path)
 for filename in os.listdir(os.getcwd()):
@@ -19,14 +20,19 @@ for filename in os.listdir(os.getcwd()):
     tomint.append(tom)
     del tom
 tomint = np.array(tomint) 
-#%% complete cGAN 
-path = r'D:\DLOCT\TomogramsDataAcquisition\Fovea\Motion_corrected\Tnode_cGAN_syntetic_opticnerve\z=(1..586)_x=(1..896)_y=(1..960)-nSpec=\Int_8x8x8x0_3x3x3x0_110_0_50_unitary'
+#%% sub sampled
+path = r'C:\Users\USER\Documents\GitHub\Fovea\[p.SHARP][s.Eye2a][10-09-2019_13-14-42]\z=(1..586)_x=(1..512)_y=(1..960)-nSpec=\Int_8x8x8x0_3x3x3x0_250_0_50_unitary'
 file = 'TNodeIntFlattenRPE.bin'
-nXBin = 896
-nYBin = 960
 nZBin = 586
+nXBin = int(896/2)
+nYBin = 960
 tom = np.fromfile(path+'\\'+file,'single')
-tomcGAN = tom.reshape((nZBin,nXBin,nYBin),order='F')
+tomSub = tom.reshape((nZBin,nXBin,nYBin),order='F')
+del tom
+#%%
+tomSub = np.pad(tomSub, ((0, 0), (224, 224), (0, 0)), mode='constant', constant_values=1)
+
+
 
 #%%
 thisbscan=256
@@ -58,7 +64,7 @@ create_and_save_subplot(plot_cGAN,plot_orig,
                         file_name=file)
 #%%
 thisbscan=160
-plot_cGAN = 10*np.log10(abs(tomint[1,:,thisbscan,:]))
+plot_cGAN = 10*np.log10(abs(tomint[1,:,thisbscan,:])**2)
 plot_orig = 10*np.log10(abs(tomint[0,:,thisbscan,:])**2)
 zmax=250
 zmin = 160
@@ -74,14 +80,23 @@ create_and_save_subplot(plot_cGAN,plot_orig,
 #%%
 original_array = np.transpose(tomint, (1, 2, 3, 0))
 
-# Redimensionamos los volúmenes para que tengan tres dimensiones (x, y, 2z)
-volume1 = original_array[:,:,:,0].reshape((586, 587, -1))
-volume2 = original_array[:,:,:,1].reshape((586, 587, -1))
+# Concatenar a lo largo del eje 0
+concatenated_array = np.concatenate((tomint, tomSub[np.newaxis, :, :, :]), axis=0)
+
+# Luego, transponer
+original_array = np.transpose(concatenated_array, (1, 2, 3, 0))
+
+# Redimensionamos los volúmenes para que tengan tres dimensiones (x, y, 2z o 3z)
+volume1 = original_array[:,:,:,0].reshape((586, 896, -1))
+volume2 = original_array[:,:,:,1].reshape((586, 896, -1))
+volume3 = original_array[:,:,:,2].reshape((586, 896, -1))  # Extrae y redimensiona tomSub
 
 # Concatenamos los volúmenes a lo largo del eje Y
-compare = np.concatenate((volume1**2, volume2), axis=1)
-compare = np.transpose(compare,(2,0,1))
-del volume1, volume2
+compare = np.concatenate((volume1, volume2, volume3), axis=1)
+compare = np.transpose(compare, (2, 0, 1))
+
+# Liberar memoria
+del volume1, volume2, volume3
 #%%
 import plotly.express as px
 #%%
@@ -95,5 +110,6 @@ tiff_3Dsave(10*np.log10(tomint[1,:,:,:]),output+filename)
 filename = '\OriginaltomintTNode.tiff'
 tiff_3Dsave(10*np.log10(tomint[0,:,:,:]),output+filename)
 #%%
-filename = '\compare_original_cGAN.tiff'
-tiff_3Dsave(10*np.log10((compare)),output+filename)
+output = r'C:\Users\USER\Documents\GitHub\Fovea'
+filename = '\compare_original_sub_cGAN.tiff'
+tiff_3Dsave(10*np.log10(abs(compare)**2),output+filename)
