@@ -6,6 +6,7 @@ import os
 import tifffile as tiff
 import plotly.express as px
 from skimage.metrics import structural_similarity as ssim
+import matplotlib.pyplot as plt
 
 
 def tiff_3Dsave(array, filename):
@@ -328,3 +329,16 @@ def calculate_psnr(image1, image2, max_val=1.0):
     psnr = 10 * np.log10(max_val**2 / mse)
     
     return psnr
+
+def save_image(array,cmap='gray',file_name='file',ext='png',dpi = 300,vmin=85,vmax=110):
+    fig, ax = plt.subplots()
+    ax.imshow(array, cmap=cmap,vmin=vmin,vmax=vmax)  # Puedes cambiar 'viridis' por el colormap que prefieras.
+    # Elimina los ejes y bordes blancos
+    ax.axis('off')
+    plt.subplots_adjust(top=1, bottom=0, right=1, left=0, hspace=0, wspace=0)
+    plt.margins(0,0)
+    plt.gca().xaxis.set_major_locator(plt.NullLocator())
+    plt.gca().yaxis.set_major_locator(plt.NullLocator())
+    # Guarda la imagen
+    plt.savefig(file_name + '.' + ext, bbox_inches='tight', pad_inches=0, dpi=300)
+    plt.close()
