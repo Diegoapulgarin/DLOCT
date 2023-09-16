@@ -20,7 +20,7 @@ if gpus:
 
 #%%
 
-root=r'C:\Users\USER\Documents\cGAN_2'
+root=r'D:\DLOCT\TomogramsDataAcquisition\Fovea\Motion_corrected\cGAN_1'
 model_folder = '\\Models'
 path = root+model_folder
 savefolder = path
@@ -69,10 +69,14 @@ for i in models:
     slicesUnder=downSampleSlices(slices)
     print('metrics evaluation')
     ssims = np.mean(ssimMetric(logslices, logslicesOver))
+    ssims_std = np.std(ssimMetric(logslices, logslicesOver))
+    ssims_uncertainty = ssims_std / np.sqrt(len(logslices))
     phasemetric = np.mean(ownPhaseMetric_numpy(logslices, logslicesOver))
     phasemetricCorrected = np.mean(ownPhaseMetricCorrected_numpy(logslices, logslicesOver))
     mse = np.mean((logslices - logslicesOver)**2)
-    epoch_metrics = np.array((ssims,phasemetric,phasemetricCorrected,mse))
+    mse_std = np.std(mse)
+    mse_uncertainty = mse_std / np.sqrt(np.prod(np.shape(mse)))
+    epoch_metrics = np.array((ssims,ssims_std,ssims_uncertainty,phasemetric,phasemetricCorrected,mse,mse_std,mse_uncertainty))
     metrics.append(epoch_metrics)
     del model
     gc.collect()

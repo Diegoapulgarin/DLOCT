@@ -46,6 +46,13 @@ print('cGAN saved')
 save_image(plot_orig,file_name='TNode_orig_ZX308',vmin=vmin,vmax=vmax)
 print('original saved')
 #%%
+thisbscan=int(308)
+vmin = 165
+vmax = 235
+plot_sub = 10*np.log10(abs(tomSub[:,:,thisbscan])**2)
+plt.imshow(plot_sub,cmap='gray',vmin = vmin, vmax=vmax)
+save_image(plot_sub,file_name='TNode_sub_ZX308',vmin=vmin,vmax=vmax)
+#%%
 # zmax=250
 # zmin = 160
 # file = 'ZX_256'
@@ -67,6 +74,14 @@ save_image(plot_cGAN,file_name='TNode_cGAN_XY190',vmin=vmin,vmax=vmax)
 print('cGAN saved')
 save_image(plot_orig,file_name='TNode_orig_XY190',vmin=vmin,vmax=vmax)
 print('original saved')
+#%%
+thisbscan=int(190)
+vmin = 165
+vmax = 235
+plot_sub = 10*np.log10(abs(tomSub[thisbscan,:,:])**2)
+plt.imshow(plot_sub,cmap='gray',vmin = vmin, vmax=vmax)
+save_image(plot_sub,file_name='TNode_sub_XY190',vmin=vmin,vmax=vmax)
+
 
 #%%
 # zmax=250
@@ -90,6 +105,14 @@ save_image(plot_cGAN,file_name='TNode_cGAN_ZY180',vmin=vmin,vmax=vmax)
 print('cGAN saved')
 save_image(plot_orig,file_name='TNode_orig_ZY180',vmin=vmin,vmax=vmax)
 print('original saved')
+#%%
+
+thisbscan=int(180/2)
+vmin = 165
+vmax = 235
+plot_sub = 10*np.log10(abs(tomSub[:,thisbscan,:])**2)
+plt.imshow(plot_sub,cmap='gray',vmin = vmin, vmax=vmax)
+save_image(plot_sub,file_name='TNode_sub_ZY180',vmin=vmin,vmax=vmax)
 
 # zmax=250
 # zmin = 160
