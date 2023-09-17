@@ -74,7 +74,7 @@ for i in models:
     phasemetric = np.mean(ownPhaseMetric_numpy(logslices, logslicesOver))
     phasemetricCorrected = np.mean(ownPhaseMetricCorrected_numpy(logslices, logslicesOver))
     mse = np.mean((logslices - logslicesOver)**2)
-    mse_std = np.std(mse)
+    mse_std = np.std((logslices - logslicesOver)**2)
     mse_uncertainty = mse_std / np.sqrt(np.prod(np.shape(mse)))
     epoch_metrics = np.array((ssims,ssims_std,ssims_uncertainty,phasemetric,phasemetricCorrected,mse,mse_std,mse_uncertainty))
     metrics.append(epoch_metrics)
@@ -87,7 +87,7 @@ np.save(root+'\\metrics_log',metrics_log)
 ssims = metrics_log[:,0]
 phasemetric = metrics_log[:,1]
 phasemetricCorrected = metrics_log[:,2]
-mse = metrics_log[:,3]
+mse = metrics_log[:,6]
 fig,axs = plt.subplots(2,2)
 axs[0,0].plot(ssims)
 axs[0,0].set_title('ssims')
