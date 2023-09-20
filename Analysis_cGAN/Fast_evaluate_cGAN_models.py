@@ -64,7 +64,7 @@ for i in models:
     print('__________ reading___________',i)
     model = tf.keras.models.load_model(path+'\\'+ i,compile=False)
     print('model loaded')
-    logslicesOver = np.array(model.predict(logslicesUnder, batch_size=4), dtype='float64')
+    logslicesOver = np.array(model.predict(logslicesUnder, batch_size=8), dtype='float64')
     slicesOver = inverseLogScaleSlices(logslicesOver, slicesMax, slicesMin)
     slicesUnder=downSampleSlices(slices)
     print('metrics evaluation')

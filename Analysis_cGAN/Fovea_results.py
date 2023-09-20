@@ -66,6 +66,7 @@ imag = '_imag.bin'
 nZbin = 586
 nXbin = 448
 nYbin = 960
+
 tom = np.fromfile(path+'\\'+filename+real,'single')
 tom = np.reshape(tom,(nZbin,nXbin,nYbin,2),order='F')
 tom = np.sum(tom,axis=3)
@@ -73,7 +74,6 @@ tom = np.sum(tom,axis=3)
 tomi = np.fromfile(path+'\\'+filename+imag,'single')
 tomi = np.reshape(tomi,(nZbin,nXbin,nYbin,2),order='F')
 tomi = np.sum(tomi,axis=3)
-
 
 tomSubsampled = np.stack((tom, tomi), axis=3)
 del tom, tomi
