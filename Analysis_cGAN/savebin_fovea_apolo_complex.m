@@ -5,18 +5,18 @@ tomDownImag = load(fullfile(path,"tomDownImag.mat"));
 tomDownImag = tomDownImag.tomDownImag;
 
 %%
-tomIntFilename = '[p.SHARP][s.Eye2a][10-09-2019_13-14-42]_Tomint_z=(295..880)_x=(65..512)_y=(1..960)_subsampled_Real.bin';
+tomIntFilename = '[p.SHARP][s.Eye2a][10-09-2019_13-14-42]_Tomint_z=(295..880)_x=(65..960)_y=(1..480)_subsampled_Real.bin';
 fId1 = fopen(fullfile(path, tomIntFilename), 'w'); % Open
 fwrite(fId1, tomDownReal, 'single'); % Write
 fclose(fId1); % Close
 
-tomIntFilename = '[p.SHARP][s.Eye2a][10-09-2019_13-14-42]_Tomint_z=(295..880)_x=(65..512)_y=(1..960)_subsampled_Imag.bin';
+tomIntFilename = '[p.SHARP][s.Eye2a][10-09-2019_13-14-42]_Tomint_z=(295..880)_x=(65..960)_y=(1..480)_subsampled_Imag.bin';
 fId1 = fopen(fullfile(path, tomIntFilename), 'w'); % Open
 fwrite(fId1, tomDownImag, 'single'); % Write
 fclose(fId1); % Close
 %%
 tomDown = abs(tomDownReal+1i*tomDownImag).^2;
-tomIntFilename = '[p.SHARP][s.Eye2a][10-09-2019_13-14-42]_Tomint_z=(295..880)_x=(65..512)_y=(1..960)_subsampled.bin';
+tomIntFilename = '[p.SHARP][s.Eye2a][10-09-2019_13-14-42]_Tomint_z=(295..880)_x=(65..960)_y=(1..480)_subsampled.bin';
 fId1 = fopen(fullfile(path, tomIntFilename), 'w'); % Open
 fwrite(fId1, tomDown, 'single'); % Write
 fclose(fId1); % Close
@@ -51,4 +51,6 @@ fId1 = fopen(fullfile(path, tomIntFilename), 'w'); % Open
 fwrite(fId1, tomDataOverint, 'single'); % Write
 fclose(fId1); % Close
 
+%%
+imagesc(10*log10(squeeze(tomDown(170,:,:,1))))
  

@@ -17,13 +17,13 @@ metrics = np.load(path+file)
     7 mse_uncertainty
 
 '''
-ssim_metric = metrics[0:81,0]
-ssim_std = metrics[0:81,1]
-mse_values = metrics[0:81,5]
-mse_std_values = metrics[0:81,6]
+ssim_metric = metrics[0:25,0]
+ssim_std = metrics[0:25,1]
+mse_values = metrics[0:25,5]
+mse_std_values = metrics[0:25,6]
 #%%
 fig = go.Figure()
-fig.add_trace(go.Scatter( y=ssim_metric, mode='lines', name='SSIM', line=dict(width=4.5)))
+fig.add_trace(go.Scatter( y=ssim_metric, mode='lines+markers', name='SSIM', line=dict(width=2)))
 fig.add_trace(go.Scatter( y=ssim_metric + ssim_std, fill='tonexty', fillcolor='rgba(0,100,80,0.2)', line=dict(color='rgba(255,255,255,0)'), name='+1 STD',showlegend=False))
 fig.add_trace(go.Scatter( y=ssim_metric - ssim_std, fill='tonexty', fillcolor='rgba(0,100,80,0.2)', line=dict(color='rgba(255,255,255,0)'), name='-1 STD',showlegend=False))
 
@@ -37,7 +37,7 @@ epoch_20_value = ssim_metric[20]
 annotation_text = f"SSIM: {epoch_11_value:.4f}" 
 fig.add_annotation(
     x=11, 
-    y=epoch_11_value+0.002*epoch_11_value, 
+    y=epoch_11_value+0.005*epoch_11_value, 
     text=annotation_text,
     showarrow=True,
     arrowhead=3,
@@ -47,7 +47,7 @@ fig.add_annotation(
 annotation_text = f"SSIM: {epoch_04_value:.4f}" 
 fig.add_annotation(
     x=4, 
-    y=epoch_04_value+0.002*epoch_04_value, 
+    y=epoch_04_value+0.005*epoch_04_value, 
     text=annotation_text,
     showarrow=True,
     arrowhead=3,
@@ -57,7 +57,7 @@ fig.add_annotation(
 annotation_text = f"SSIM: {epoch_20_value:.4f}" 
 fig.add_annotation(
     x=20, 
-    y=epoch_20_value+0.002*epoch_20_value, 
+    y=epoch_20_value+0.005*epoch_20_value, 
     text=annotation_text,
     showarrow=True,
     arrowhead=3,
@@ -76,7 +76,7 @@ fig.write_html(path+'\\ssim.html')
 #%%
 
 fig = go.Figure()
-fig.add_trace(go.Scatter(y=mse_values, mode='markers', name='MSE', line=dict(width=3.5)))
+fig.add_trace(go.Scatter(y=mse_values, mode='lines+markers', name='MSE', line=dict(width=2)))
 fig.add_trace(go.Scatter(y=mse_values + mse_std_values, fill='tonexty', fillcolor='rgba(0,100,80,0.2)', line=dict(color='rgba(255,255,255,0)'), name='+1 STD', showlegend=False))
 fig.add_trace(go.Scatter(y=mse_values - mse_std_values, fill='tonexty', fillcolor='rgba(0,100,80,0.2)', line=dict(color='rgba(255,255,255,0)'), name='+1 STD', showlegend=False))
 

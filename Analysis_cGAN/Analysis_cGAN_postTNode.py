@@ -22,16 +22,16 @@ for filename in os.listdir(os.getcwd()):
     del tom
 tomint = np.array(tomint) 
 #%% sub sampled
-path = r'C:\Users\USER\Documents\GitHub\Fovea\[p.SHARP][s.Eye2a][10-09-2019_13-14-42]\z=(1..586)_x=(1..512)_y=(1..960)-nSpec=\Int_8x8x8x0_3x3x3x0_250_0_50_unitary'
+path = r'C:\Users\USER\Documents\GitHub\Fovea\[p.SHARP][s.Eye2a][10-09-2019_13-14-42]\z=(1..586)_x=(1..896)_y=(1..480)-nSpec=\Int_8x8x8x0_3x3x3x0_250_0_50_unitary'
 file = 'TNodeIntFlattenRPE.bin'
 nZBin = 586
-nXBin = int(896/2)
-nYBin = 960
+nXBin = 896
+nYBin = int(960/2)
 tom = np.fromfile(path+'\\'+file,'single')
 tomSub = tom.reshape((nZBin,nXBin,nYBin),order='F')
 del tom
 #%%
-tomSub = np.pad(tomSub, ((0, 0), (224, 224), (0, 0)), mode='constant', constant_values=1)
+tomSub = np.pad(tomSub, ((0, 0), (0, 0), (240, 240) ), mode='constant', constant_values=1)
 tomint = np.concatenate((tomint, tomSub[np.newaxis, :, :, :]), axis=0)
 del tomSub
 #%%
@@ -46,7 +46,7 @@ print('cGAN saved')
 save_image(plot_orig,file_name='TNode_orig_ZX308',vmin=vmin,vmax=vmax)
 print('original saved')
 #%%
-thisbscan=int(308)
+thisbscan=int(308/2)
 vmin = 165
 vmax = 235
 plot_sub = 10*np.log10(abs(tomSub[:,:,thisbscan])**2)
@@ -107,7 +107,7 @@ save_image(plot_orig,file_name='TNode_orig_ZY180',vmin=vmin,vmax=vmax)
 print('original saved')
 #%%
 
-thisbscan=int(180/2)
+thisbscan=int(180)
 vmin = 165
 vmax = 235
 plot_sub = 10*np.log10(abs(tomSub[:,thisbscan,:])**2)

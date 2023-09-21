@@ -330,7 +330,7 @@ def calculate_psnr(image1, image2, max_val=1.0):
     
     return psnr
 
-def save_image(array,cmap='gray',file_name='file',ext='png',dpi = 300,vmin=85,vmax=110):
+def save_image(array,cmap='gray',file_name='file',ext='png',dpi = 300,vmin=85,vmax=110,path=r'C:\Users\USER\Documents'):
     fig, ax = plt.subplots()
     ax.imshow(array, cmap=cmap,vmin=vmin,vmax=vmax)  # Puedes cambiar 'viridis' por el colormap que prefieras.
     # Elimina los ejes y bordes blancos
@@ -340,5 +340,5 @@ def save_image(array,cmap='gray',file_name='file',ext='png',dpi = 300,vmin=85,vm
     plt.gca().xaxis.set_major_locator(plt.NullLocator())
     plt.gca().yaxis.set_major_locator(plt.NullLocator())
     # Guarda la imagen
-    plt.savefig(file_name + '.' + ext, bbox_inches='tight', pad_inches=0, dpi=300)
+    plt.savefig(path + '\\'+ file_name + '.' + ext, bbox_inches='tight', pad_inches=0, dpi=300)
     plt.close()
