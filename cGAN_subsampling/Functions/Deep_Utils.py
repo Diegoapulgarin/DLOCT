@@ -250,41 +250,6 @@ def Correlation(slices, savename=None):
     # meany = np.mean(correlationy)
     return correlationx, correlationy
 
-def calculate_mse(image_original, image_reconstructed):
-    """
-    Calcula el Error Cuadrático Medio (MSE) entre dos imágenes.
-
-    Parámetros:
-    - image_original: numpy array 2D representando la imagen original en escala de grises.
-    - image_reconstructed: numpy array 2D representando la imagen reconstruida por la cGAN.
-
-    Devuelve:
-    - MSE entre las dos imágenes.
-    """
-    # Asegúrate de que las imágenes tengan el mismo tamaño
-    assert image_original.shape == image_reconstructed.shape, "Las imágenes deben tener el mismo tamaño."
-
-    mse = np.mean((image_original - image_reconstructed) ** 2)
-    return mse
-
-def convert_to_dB(image):
-    """
-    Convierte una imagen OCT a escala de decibeles.
-
-    Parámetros:
-    - image: numpy array 2D representando la imagen original.
-
-    Devuelve:
-    - Imagen en escala de decibeles.
-    """
-    # Tomando la magnitud al cuadrado
-    magnitude_squared = np.abs(image) ** 2
-    
-    # Convertir a escala de decibeles
-    image_dB = 10 * np.log10(magnitude_squared + np.finfo(float).eps)  # Se añade un pequeño valor para evitar log(0)
-
-    return image_dB
-
 def calculate_ssim(image1, image2):
     """
     Calcula el Índice de Similitud Estructural (SSIM) entre dos imágenes.
@@ -303,6 +268,23 @@ def calculate_ssim(image1, image2):
     # Por simplicidad, aquí supondré que están en el rango [0, 1] (por ejemplo, tras una normalización)
     ssim_value, _ = ssim(image1, image2, full=True,data_range=1)
     return ssim_value
+
+def calculate_mse(image_original, image_reconstructed):
+    """
+    Calcula el Error Cuadrático Medio (MSE) entre dos imágenes.
+
+    Parámetros:
+    - image_original: numpy array 2D representando la imagen original en escala de grises.
+    - image_reconstructed: numpy array 2D representando la imagen reconstruida por la cGAN.
+
+    Devuelve:
+    - MSE entre las dos imágenes.
+    """
+    # Asegúrate de que las imágenes tengan el mismo tamaño
+    assert image_original.shape == image_reconstructed.shape, "Las imágenes deben tener el mismo tamaño."
+
+    mse = np.mean((image_original - image_reconstructed) ** 2)
+    return mse
 
 def calculate_psnr(image1, image2, max_val=1.0):
     """
@@ -329,6 +311,35 @@ def calculate_psnr(image1, image2, max_val=1.0):
     psnr = 10 * np.log10(max_val**2 / mse)
     
     return psnr
+
+def relative_error(true_image, estimated_image):
+    # Calculamos el error relativo para cada píxel
+    error = np.abs(true_image - estimated_image) / (true_image + 1e-10)  # Evitamos división por cero
+    # Promediamos el error relativo en toda la imagen
+    mean_relative_error = np.mean(error)
+    return mean_relative_error
+
+import cv2
+
+def histogram_difference(image1, image2, method="chi-squared"):
+    # Calcular histogramas
+    hist1 = cv2.calcHist([image1], [0], None, [256], [0, 1]) # asumiendo que la imagen está normalizada entre 0 y 1
+    hist2 = cv2.calcHist([image2], [0], None, [256], [0, 1])
+
+    # Normalizar histogramas si se va a usar Kullback-Leibler
+    if method == "kullback-leibler":
+        hist1 /= hist1.sum()
+        hist2 /= hist2.sum()
+    
+    # Calcular diferencia de histogramas
+    if method == "chi-squared":
+        # Usar distancia chi-cuadrado
+        return cv2.compareHist(hist1, hist2, cv2.HISTCMP_CHISQR)
+    elif method == "kullback-leibler":
+        # Usar divergencia de Kullback-Leibler
+        return cv2.compareHist(hist1, hist2, cv2.HISTCMP_KL_DIV)
+    else:
+        raise ValueError("Método no reconocido")
 
 def save_image(array,cmap='gray',file_name='file',ext='png',dpi = 300,vmin=85,vmax=110,path=r'C:\Users\USER\Documents'):
     fig, ax = plt.subplots()
