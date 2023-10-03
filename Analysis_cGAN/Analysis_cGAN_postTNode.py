@@ -313,9 +313,9 @@ fig.add_shape(
 
 # Configuraciones adicionales
 fig.update_layout(
-    title='histogram difference ',
+    title='Histogram difference ',
     xaxis=dict(title='Enface planes',showgrid=True, zeroline=False, showline=True, gridcolor='rgba(128,128,128,0.3)', zerolinecolor='rgba(128,128,128,0.5)', linecolor='rgba(0,0,0,1)'),
-    yaxis=dict(title='histogram difference',showgrid=True, zeroline=False, showline=True, gridcolor='rgba(128,128,128,0.3)', zerolinecolor='rgba(128,128,128,0.5)', linecolor='rgba(0,0,0,1)'),
+    yaxis=dict(title='Histogram difference',showgrid=True, zeroline=False, showline=True, gridcolor='rgba(128,128,128,0.3)', zerolinecolor='rgba(128,128,128,0.5)', linecolor='rgba(0,0,0,1)'),#, tickformat=".1e"
     legend_title_text='Metric',
     font=dict(family="Times New Roman", size=25),
     font_color='black',
