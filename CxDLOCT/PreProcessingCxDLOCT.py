@@ -12,7 +12,7 @@ import os
 import plotly.graph_objs as go
 import plotly.subplots as sp
 from scipy.signal import hilbert
-
+from plotly.subplots import make_subplots
 #%%
 
 path = r'C:\Users\USER\Documents\GitHub\Simulated_Data_Complex'
@@ -55,7 +55,7 @@ fig.show()
 def moving_average(data, window_size):
     return np.convolve(data, np.ones(window_size)/window_size, mode='valid')
 
-window_size = 20  # Puedes ajustar este valor según tus necesidades
+window_size = 30  # Puedes ajustar este valor según tus necesidades
 smoothed_envelope = moving_average(envelope[:,1,1], window_size)
 
 second_derivative_smoothed = np.diff(smoothed_envelope, n=2)
@@ -112,47 +112,47 @@ print(len(segmented_fringes_without_padding))
 
 #%%
 
-import numpy as np
-from scipy.signal import hilbert
+# Transformada de Hilbert para obtener la señal analítica
+analytic_signal = hilbert(real_fringe[:,1,1])
 
-# 1. Calcular la Transformada de Hilbert de cada fragmento
-analytic_signals = [hilbert(fragment) for fragment in segmented_fringes_without_padding]
+# Calculamos la fase de la señal analítica
+phase_real_fringes = np.angle(analytic_signal)
 
-# 2. Extraer la fase de cada fragmento
-phases = [np.angle(analytic_signal) for analytic_signal in analytic_signals]
+# Inicializamos nuestra fase acumulada con la fase de real_fringes
+accumulated_phase = phase_real_fringes.copy()
 
-# 3. Acumulación de la fase
-accumulated_phase = np.zeros_like(real_fringe[:,1,1])
-start_idx = 0
-for i, phase in enumerate(phases):
-    end_idx = start_idx + len(phase)
-    if i == 0:
-        accumulated_phase[start_idx:end_idx] = phase
-    else:
-        accumulated_phase[start_idx:end_idx] = phase + accumulated_phase[start_idx - 1]
-    start_idx = end_idx
+for i in range(1, len(segmented_fringes_without_padding)):
+    # Calculamos la fase del fragmento actual
+    current_phase = np.angle(segmented_fringes_without_padding[i])
+    
+    # Actualizamos la fase acumulada a partir de ese fragmento
+    accumulated_phase[i:i+len(current_phase)] += current_phase
+    
 
-# 4. Construir la señal compleja acumulada
-amplitude = np.abs(real_fringe[:,1,1])
-complex_accumulated_signal = amplitude * np.exp(1j * accumulated_phase)
+# Finalmente, normalizamos la fase acumulada para que esté entre -pi y pi
+accumulated_phase = np.angle(np.exp(1j * accumulated_phase))
 
-# Verificar las dimensiones
-print(complex_accumulated_signal.shape)
+complex_signal = real_fringe[:,1,1] * np.exp(1j * accumulated_phase)
 
 
-#%%
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
+#%% comprobación fft
+fft_fringetest = np.fft.fftshift(np.fft.fft(fringesTest[:,1,1]))
+fft_complexsignal = np.fft.fftshift(np.fft.fft(complex_signal))
+fft_realfringe = np.fft.fftshift(np.fft.fft(real_fringe[:,1,1]))
+
 
 # Crear un subplot con 2 filas y 1 columna
-fig = make_subplots(rows=2, cols=1)
+fig = make_subplots(rows=3, cols=1)
 
 # Agregar la primera traza al primer subplot
-fig.add_trace(go.Scatter(y=segmented_fringes[1,:], mode='lines', name='Fragmento'), row=1, col=1)
+fig.add_trace(go.Scatter(y=abs(fft_fringetest), mode='lines', name='fft original'), row=1, col=1)
 
 # Agregar la segunda traza al segundo subplot
-fig.add_trace(go.Scatter(y=real_fringe[:,1,1], mode='lines', name='Fringe Completa'), row=2, col=1)
+fig.add_trace(go.Scatter(y=abs(fft_complexsignal), mode='lines', name='fft estimated'), row=2, col=1)
+
+fig.add_trace(go.Scatter(y=abs(fft_realfringe), mode='lines', name='fft complex conjugate'), row=3, col=1)
 
 # Mostrar la figura
 fig.show()
+
 
