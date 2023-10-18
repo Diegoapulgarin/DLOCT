@@ -13,7 +13,15 @@ import plotly.graph_objs as go
 import plotly.subplots as sp
 from scipy.signal import hilbert
 from plotly.subplots import make_subplots
+from scipy.signal import butter, filtfilt
 #%%
+
+def low_pass_filter(data, cutoff, fs, order=5):
+    nyq = 0.5 * fs  # Frecuencia de Nyquist
+    normal_cutoff = cutoff / nyq
+    b, a = butter(order, normal_cutoff, btype='low', analog=False)
+    y = filtfilt(b, a, data)
+    return y
 
 path = r'C:\Users\USER\Documents\GitHub\Simulated_Data_Complex'
 os.chdir(path)
@@ -32,12 +40,13 @@ for filename in os.listdir(os.getcwd()):
 fringes = np.array(fringes)
 del fringes1, fringes_slice
 #%%
-thisfringes = 0
+thisfringes = 2
 fringesTest = fringes[thisfringes,:,:,:]
 real_fringe = np.abs(fringesTest) * np.cos(np.angle(fringesTest))
+fringe_filtered = low_pass_filter(real_fringe, cutoff=40, fs=500)  # Ajusta los valores según tus datos
 
 
-analytic_signal = hilbert(real_fringe)
+analytic_signal = hilbert(fringe_filtered)
 
 envelope = np.abs(analytic_signal)
 #%%
@@ -51,11 +60,15 @@ fig.add_trace(go.Scatter(y=(-envelope[:,1,1]), mode='lines', name='- envelope',
 fig.show()
 
 #%%
-
+thisfringes = 2
+fringesTest = fringes[thisfringes,:,:,:]
+real_fringe = np.abs(fringesTest) * np.cos(np.angle(fringesTest))
+analytic_signal = hilbert(real_fringe)
+envelope = np.abs(analytic_signal)
 def moving_average(data, window_size):
     return np.convolve(data, np.ones(window_size)/window_size, mode='valid')
 
-window_size = 30  # Puedes ajustar este valor según tus necesidades
+window_size = 20  # Puedes ajustar este valor según tus necesidades
 smoothed_envelope = moving_average(envelope[:,1,1], window_size)
 
 second_derivative_smoothed = np.diff(smoothed_envelope, n=2)
@@ -138,7 +151,7 @@ complex_signal = real_fringe[:,1,1] * np.exp(1j * accumulated_phase)
 #%% comprobación fft
 fft_fringetest = np.fft.fftshift(np.fft.fft(fringesTest[:,1,1]))
 fft_complexsignal = np.fft.fftshift(np.fft.fft(complex_signal))
-fft_realfringe = np.fft.fftshift(np.fft.fft(real_fringe[:,1,1]))
+fft_realfringe = np.fft.fftshift(np.fft.fft(real_fringe[:,1,1]+1j*np.imag(fringesTest[:,1,1])))
 
 
 # Crear un subplot con 2 filas y 1 columna
@@ -154,5 +167,12 @@ fig.add_trace(go.Scatter(y=abs(fft_realfringe), mode='lines', name='fft complex 
 
 # Mostrar la figura
 fig.show()
+
+
+fig=go.Figure()
+fig.add_trace(go.Scatter(y=(np.imag(fringesTest[:,1,1])), mode='lines', name='original'))
+fig.add_trace(go.Scatter(y=(np.imag(complex_signal)), mode='lines', name='estimated'))
+fig.show()
+
 
 
