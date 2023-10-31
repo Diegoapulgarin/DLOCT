@@ -153,14 +153,13 @@ ysize=np.shape(normalized_volume_complex)[3]
 padded_tomogram = np.zeros((ntom,zsize,xsize,ysize))
 padded_target = np.zeros((ntom,zsize,xsize,ysize))
 for i in range(np.shape(padded_target)[0]):
-    padded_tomogram[i,:,:,:], padded_target[i,:,:,:] = paired_random_zero_padding(normalized_volume_complex[2,:,:,:], 
-                                                                                  normalized_volume_real[2,:,:,:], target_z_size=zsize)
-
+    padded_tomogram[i,:,:,:], padded_target[i,:,:,:] = paired_random_zero_padding(normalized_volume_real[i,:,:,:], 
+                                                                                  normalized_volume_complex[i,:,:,:], target_z_size=zsize)
 
 #%%
 import matplotlib.pyplot as plt
 plt.figure()
-plt.plot(padded_target[:,1,1], label="Single Aline FFT")
-plt.plot(padded_tomogram[:, 1, 1], label="Volume FFT")
+plt.plot(padded_tomogram[6,:, 1, 1], label="Real signal fft")
+plt.plot(padded_target[6,:,1,1], label="complex signal fft")
 plt.legend()
 plt.show()
