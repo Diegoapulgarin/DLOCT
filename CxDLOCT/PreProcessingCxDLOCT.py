@@ -134,15 +134,15 @@ fft_realfringe = np.fft.fftshift(np.fft.fft(real_fringe[:,1,1]))
 
 
 # Crear un subplot con 2 filas y 1 columna
-fig = make_subplots(rows=3, cols=1)
+fig = make_subplots(rows=2, cols=1)
 
 # Agregar la primera traza al primer subplot
-fig.add_trace(go.Scatter(y=abs(fft_fringetest), mode='lines', name='fft original complex_signal'), row=1, col=1)
+fig.add_trace(go.Scatter(y=abs(fft_fringetest), mode='lines', name='fft original complex_signal'), row=2, col=1)
 
 # Agregar la segunda traza al segundo subplot
-fig.add_trace(go.Scatter(y=abs(fft_complexsignal), mode='lines', name='fft estimated complex_signal'), row=2, col=1)
+# fig.add_trace(go.Scatter(y=abs(fft_complexsignal), mode='lines', name='fft estimated complex_signal'), row=2, col=1)
 
-fig.add_trace(go.Scatter(y=abs(fft_realfringe), mode='lines', name='fft real signal'), row=3, col=1)
+fig.add_trace(go.Scatter(y=abs(fft_realfringe), mode='lines', name='fft real signal'), row=1, col=1)
 
 # Mostrar la figura
 fig.show()
