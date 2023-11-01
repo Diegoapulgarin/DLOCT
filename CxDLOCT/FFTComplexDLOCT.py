@@ -2,6 +2,7 @@
 import numpy as np
 import scipy.io as sio
 import os
+from datetime import datetime
 from scipy.fft import fft, fftshift
 from numpy.random import randn
 
@@ -12,8 +13,6 @@ from keras.models import Model
 from keras.optimizers import Adam
 from keras.layers import LeakyReLU
 from keras.layers import BatchNormalization
-
-
 
 #%%
 path = r'C:\Users\USER\Documents\GitHub\Simulated_Data_Complex'
@@ -185,17 +184,20 @@ axs[1].imshow(padded_target[t,:, :, 1])
 padded_tomogram_train = padded_tomogram[:-1]
 padded_target_train = padded_target[:-1]
 
+padded_tomogram_train = np.transpose(padded_tomogram_train,(0,2,3,1))
+padded_target_train = np.transpose(padded_target_train,(0,2,3,1))
+
 padded_tomogram_test = padded_tomogram[-1]
 padded_target_test = padded_target[-1]
 
 
-n, z, x, y = padded_tomogram_train.shape
+n, x, y, z = padded_tomogram_train.shape
 
-X = padded_tomogram_train.reshape(n*x*y, z)
-y = padded_target_train.reshape(n*x*y, z)
+X = np.reshape(padded_tomogram_train,(n*x*y,z))
+Y = np.reshape(padded_target_train,(n*x*y,z))
 
 
-X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+X_train, X_val, y_train, y_val = train_test_split(X, Y, test_size=0.2, random_state=42)
 
 #%% Funciones de la cGAN
 
@@ -211,7 +213,7 @@ def build_generator():
     h = Dense(512)(h)
     h = LeakyReLU(0.2)(h)
     h = BatchNormalization(momentum=0.8)(h)
-    h = Dense(1024, activation='tanh')(h)
+    h = Dense(1024, activation='sigmoid')(h)
     
     model = Model(input_data, h)
     
@@ -244,8 +246,12 @@ def build_cgan(generator, discriminator):
     
     return model
 
-def train(generator, discriminator, cgan, data, labels, epochs, batch_size=128, save_interval=50):    
+def train(generator, discriminator, cgan, data, labels, epochs, batch_size=128, save_interval=100):    
     # Etiquetas para datos reales y generados
+    start_time = datetime.now()
+    folder_name = start_time.strftime('%d_%m_%y_%H_%M')
+    if not os.path.exists(folder_name):
+        os.makedirs(folder_name)
     valid = np.ones((batch_size, 1))
     fake = np.zeros((batch_size, 1))
     
@@ -278,21 +284,39 @@ def train(generator, discriminator, cgan, data, labels, epochs, batch_size=128, 
         
         # Guardar imágenes generadas en intervalos regulares (puedes ajustar esto según tus necesidades)
         if epoch % save_interval == 0:
-            save_generated_data(epoch, generator)
+            save_generated_data(epoch, generator, labels, y_train, folder_name)
+            generator.save(os.path.join(folder_name, f"generator_epoch_{epoch}.h5"))
 
-def save_generated_data(epoch, generator, num_samples=10):
-    labels_sample = np.random.rand(num_samples, 1024)  # Ajusta cómo seleccionas estas etiquetas
-    generated_data = generator.predict(labels_sample)
+def save_generated_data(epoch, generator, inputs, targets,folder_name, num_samples=1):
+    # Tomamos muestras aleatorias del input y target proporcionado
+    idx = np.random.randint(0, inputs.shape[0], num_samples)
+    input_samples = inputs[idx]
+    target_samples = targets[idx]
     
-    # Aquí puedes guardar o visualizar las señales generadas
-    # Por ejemplo, usando matplotlib:
+    # Usamos el generador para obtener la salida basada en el input
+    generated_data = generator.predict(input_samples)
+    
     import matplotlib.pyplot as plt
     for i in range(num_samples):
-        plt.figure(figsize=(10, 4))
-        plt.plot(generated_data[i])
-        plt.title(f"Generated signal at epoch {epoch}")
-        plt.savefig(f"generated_{epoch}_{i}.png")
+        fig, axs = plt.subplots(1, 3, figsize=(25, 5))
+        
+        # Plot del input
+        axs[0].plot(input_samples[i])
+        axs[0].set_title("Input signal (with mirror artifact)")
+        
+        # Plot de la señal generada
+        axs[1].plot(generated_data[i])
+        axs[1].set_title(f"Generated signal at epoch {epoch}")
+        
+        # Plot del target
+        axs[2].plot(target_samples[i])
+        axs[2].set_title("Target signal (without mirror artifact)")
+        
+        plt.tight_layout()
+        plt.savefig(f"{folder_name}/epoch_{epoch}_sample_{i}.png")
         plt.close()
+
+
 
 #%%
 
@@ -318,5 +342,18 @@ cgan.summary()
 
 #%%
 
-train(generator, discriminator, cgan, X_train, y_train, epochs=10000, batch_size=32)
+train(generator, discriminator, cgan, X_train, y_train, epochs=2000, batch_size=32)
 
+#%%
+a = 5
+fig,axs = plt.subplots(1,2)
+axs[0].plot(padded_tomogram_train[a,:,100,1])
+axs[1].plot(padded_target_train[a,:,100,1])
+
+#%%
+
+a = 11970
+fig,axs = plt.subplots(1,2)
+axs[0].plot(X[a,:])
+axs[1].plot(Y[a,:])
+# axs[2].plot(X[a,:]-y[a,:])
