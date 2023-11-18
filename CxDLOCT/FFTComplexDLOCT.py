@@ -272,7 +272,7 @@ def define_generator(image_shape):
     
     # output
     g = Conv1DTranspose(image_shape[1], 4, strides=2, padding='same', kernel_initializer=init)(d6)
-    out_image = Activation('tanh')(g)
+    out_image = Activation('relu')(g)
 
     # define model
     model = Model(in_image, out_image)

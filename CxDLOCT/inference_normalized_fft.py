@@ -72,7 +72,7 @@ def consistent_zero_padding(volume, target_z_size, start_fraction=0.5):
     
     padded_volume = np.pad(volume, ((start_padding, end_padding), (0, 0), (0, 0)), mode='constant', constant_values=0)
     return padded_volume
-#%% model_049152.h5
+#%% 
 path = r'C:\Users\USER\Documents\GitHub\Simulated_Data_Complex'
 filename = 'Spheresv2_256x256x16_7_sdarr.mat'
 mat_contents = sio.loadmat(path+'/'+filename)
@@ -101,8 +101,42 @@ plt.imshow(abs(padded_tomogram[:, :, 1]))
 padded_tomogram_predict = np.transpose(padded_tomogram,(1,2,0))
 x, y, z = padded_tomogram_predict.shape
 X = np.reshape(padded_tomogram_predict,(x*y,z))
-#%%
 plt.figure()
 plt.plot(X[1,:], label="Real signal fft")
 plt.legend()
 plt.show()
+#%%
+path_model = r'C:\Users\USER\Documents\GitHub\models cxDLOCT\first_run'
+model = tf.keras.models.load_model(path_model+'\\model_049152.h5')
+#%%
+Y = model.predict(X)
+#%%
+predicted_volume=np.reshape(Y,(x,y,z))
+predicted_volume = np.transpose(predicted_volume,((2,0,1)))
+predicted_volume = predicted_volume[384:384+256,:,:]
+
+# plt.figure()
+# plt.imshow(predicted_volume[:,:,0], label="complex signal fft")
+# plt.legend()
+# plt.show()
+#%%
+normalized_volume_target = np.zeros(np.shape(fringes1))
+min_vals_list_target =[]
+range_vals_list_target =[]
+
+fftfringes_target,_ = reconstruct_tomogram((fringes1[:,:,:]),z=2)
+normalized_volume_target[:,:,:], min_vals, range_vals = normalize_volume_by_aline(abs(fftfringes_target))
+min_vals_list_target.append(min_vals)
+range_vals_list_target.append(range_vals)
+
+# plt.figure()
+# plt.imshow(normalized_volume_target[:,:,0], label="complex signal fft")
+# plt.legend()
+# plt.show()
+#%%
+
+t = 8
+fig,axs = plt.subplots(1,2)
+axs[0].imshow(predicted_volume[:, :, t])
+axs[1].imshow(normalized_volume_target[:, :, t])
+
