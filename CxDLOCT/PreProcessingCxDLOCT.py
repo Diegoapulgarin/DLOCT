@@ -60,7 +60,7 @@ fig.add_trace(go.Scatter(y=(-envelope), mode='lines', name='- envelope',
 fig.show()
 
 #%%
-thisfringes = 2
+thisfringes = 6
 fringesTest = fringes[thisfringes,:,:,:]
 real_fringe = np.abs(fringesTest) * np.cos(np.angle(fringesTest))
 def moving_average(data, window_size):
@@ -81,7 +81,6 @@ for i in range(1, len(zero_crossings_smoothed)):
 
 consolidated_crossings = np.array(consolidated_crossings)
 
-#%%
 def segment_signal_without_padding(signal, crossings):
     fragments = []
     for i in range(0, len(crossings) - 1, 2):  # Tomamos los puntos de inflexión en pares
@@ -101,8 +100,6 @@ segmented_fringes_without_padding = segment_signal_without_padding(real_fringe[:
 # Verificamos la cantidad de segmentos obtenidos
 print(len(segmented_fringes_without_padding))
 
-
-#%%
 
 # Transformada de Hilbert para obtener la señal analítica
 analytic_signal = hilbert(real_fringe[:,1,1])
@@ -127,7 +124,6 @@ accumulated_phase = np.angle(np.exp(1j * accumulated_phase))
 complex_signal = real_fringe[:,1,1] * np.exp(1j * accumulated_phase)
 
 
-#%% comprobación fft
 fft_fringetest = np.fft.fftshift(np.fft.fft(fringesTest[:,1,1]))
 fft_complexsignal = np.fft.fftshift(np.fft.fft(complex_signal))
 fft_realfringe = np.fft.fftshift(np.fft.fft(real_fringe[:,1,1]))
@@ -140,7 +136,7 @@ fig = make_subplots(rows=2, cols=1)
 fig.add_trace(go.Scatter(y=abs(fft_fringetest), mode='lines', name='fft original complex_signal'), row=2, col=1)
 
 # Agregar la segunda traza al segundo subplot
-# fig.add_trace(go.Scatter(y=abs(fft_complexsignal), mode='lines', name='fft estimated complex_signal'), row=2, col=1)
+fig.add_trace(go.Scatter(y=abs(fft_complexsignal), mode='lines', name='fft estimated complex_signal'), row=2, col=1)
 
 fig.add_trace(go.Scatter(y=abs(fft_realfringe), mode='lines', name='fft real signal'), row=1, col=1)
 

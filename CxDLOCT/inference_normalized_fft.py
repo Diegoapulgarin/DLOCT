@@ -106,7 +106,7 @@ plt.plot(X[1,:], label="Real signal fft")
 plt.legend()
 plt.show()
 #%%
-path_model = r'C:\Users\USER\Documents\GitHub\models cxDLOCT\first_run'
+path_model = r'C:\Users\USER\Documents\GitHub\models cxDLOCT\second_run'
 model = tf.keras.models.load_model(path_model+'\\model_049152.h5')
 #%%
 Y = model.predict(X)
