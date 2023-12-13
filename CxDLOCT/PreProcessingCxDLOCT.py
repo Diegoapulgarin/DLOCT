@@ -66,7 +66,7 @@ real_fringe = np.abs(fringesTest) * np.cos(np.angle(fringesTest))
 def moving_average(data, window_size):
     return np.convolve(data, np.ones(window_size)/window_size, mode='valid')
 
-window_size = 20  # Puedes ajustar este valor según tus necesidades
+window_size = 8  # Puedes ajustar este valor según tus necesidades
 smoothed_envelope = moving_average(envelope, window_size)
 
 second_derivative_smoothed = np.diff(smoothed_envelope, n=2)
@@ -98,7 +98,7 @@ def segment_signal_without_padding(signal, crossings):
 segmented_fringes_without_padding = segment_signal_without_padding(real_fringe[:,1,1], consolidated_crossings)
 
 # Verificamos la cantidad de segmentos obtenidos
-print(len(segmented_fringes_without_padding))
+# print(len(segmented_fringes_without_padding))
 
 
 # Transformada de Hilbert para obtener la señal analítica
@@ -109,14 +109,15 @@ phase_real_fringes = np.angle(analytic_signal)
 
 # Inicializamos nuestra fase acumulada con la fase de real_fringes
 accumulated_phase = phase_real_fringes.copy()
-
+ubication = len(segmented_fringes_without_padding[0])+1
 for i in range(1, len(segmented_fringes_without_padding)):
     # Calculamos la fase del fragmento actual
+    print(ubication)
     current_phase = np.angle(segmented_fringes_without_padding[i])
     
     # Actualizamos la fase acumulada a partir de ese fragmento
-    accumulated_phase[i:i+len(current_phase)] += current_phase
-    
+    accumulated_phase[ubication:ubication+len(current_phase)] += current_phase
+    ubication +=(len(current_phase)+1)
 
 # Finalmente, normalizamos la fase acumulada para que esté entre -pi y pi
 accumulated_phase = np.angle(np.exp(1j * accumulated_phase))
@@ -144,10 +145,10 @@ fig.add_trace(go.Scatter(y=abs(fft_realfringe), mode='lines', name='fft real sig
 fig.show()
 
 
-fig=go.Figure()
-fig.add_trace(go.Scatter(y=(np.imag(fringesTest[:,1,1])), mode='lines', name='imag part original'))
-fig.add_trace(go.Scatter(y=(np.imag(complex_signal)), mode='lines', name='imag estimated'))
-fig.show()
+# fig=go.Figure()
+# fig.add_trace(go.Scatter(y=(np.imag(fringesTest[:,1,1])), mode='lines', name='imag part original'))
+# fig.add_trace(go.Scatter(y=(np.imag(complex_signal)), mode='lines', name='imag estimated'))
+# fig.show()
 
 
 

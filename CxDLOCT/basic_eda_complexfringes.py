@@ -51,7 +51,7 @@ def plot_images(array1, array2, zmin, zmax,tittle,save=False):
         fig.write_html(tittle +'.html')
     fig.show()
 
-path = r'C:\Users\diego\Documents\Github\Simulated_Data_Complex'
+path = r'C:\Users\USER\Documents\GitHub\Simulated_Data_Complex'
 # path = r'/home/haunted/Projects/DLOCT/CxDLOCT/Simulated_Data_Complex'
 os.chdir(path)
 fringes = []
@@ -82,13 +82,13 @@ fig.add_trace(go.Line(y=fft_aline,name= 'fft complex fringe'),row=2,col=1)
 fig.add_trace(go.Line(y=fft_real,name='fft real fringe'),row=3,col=1)
 fig.add_trace(go.Line(y=fft_rec,name='fft recovered signal'),row=4,col=1)
 fig.show()
-fig.write_html(r'C:\Users\diego\Documents\Github\EDA.html')
+# fig.write_html(r'C:\Users\diego\Documents\Github\EDA.html')
 # %%
 hil_aline = hilbert(intensity)
 recovered2 = abs(intensity)*np.exp(1j*hil_aline.imag)
 diff = intensity - recsignal.real
-fft_hil = abs(fftshift(fft(recsignal)))
+fft_hil = abs(fftshift(fft(recovered2)))
 fig = sp.make_subplots(rows=3,cols=1)
 fig.add_trace(go.Line(y=diff,name='real signal difference'),row=1,col=1)
-fig.add_trace(go.Line(y=recsignal.imag, name='Original phase'),row=2,col=1)
+fig.add_trace(go.Line(y=fft_real,name='Original phase'),row=2,col=1)
 fig.add_trace(go.Line(y=fft_hil,name = 'estimated signal'),row=3,col=1)
