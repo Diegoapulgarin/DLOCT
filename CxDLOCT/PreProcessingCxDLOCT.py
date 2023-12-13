@@ -55,7 +55,7 @@ del fringes1, fringes_slice
 #%% calculate and plot de envelope
 
 
-thisfringes = 2
+thisfringes = 6
 fringesTest = fringes[thisfringes,:,:,:]
 real_fringe = np.abs(fringesTest) * np.cos(np.angle(fringesTest))
 emd = EMD()
@@ -164,36 +164,81 @@ plt.vlines(x=peaks, ymin=smoothed_envelope[peaks] - properties["prominences"], y
 plt.hlines(y=properties["width_heights"], xmin=properties["left_ips"], xmax=properties["right_ips"], color="C1")
 plt.show()
 #%%
+# Aquí tu código ajustado para dividir los espacios entre segmentos equitativamente.
 
-# Asumimos que 'peaks' y 'properties' han sido definidos previamente utilizando find_peaks
+# Inicializamos la lista para guardar los índices de inicio y fin de cada segmento
+segment_indices = []
 
-# Usamos 'left_ips' y 'right_ips' para obtener los puntos de inicio y fin de cada pico
-left_bases = properties["left_bases"]
-right_bases = properties["right_bases"]
+# El primer segmento comienza en el primer punto de la señal
+start_index = 0
 
-# Inicializamos la lista para guardar los segmentos expandidos
-expanded_segments = []
-
-# La primera expansión comienza desde el primer punto de la señal
-start_expansion = 0
-
-for i in range(len(peaks)):
-    # Definimos el punto de inicio de este segmento como el máximo entre el inicio del pico y la expansión actual
-    start = max(left_bases[i], start_expansion)
-    # Definimos el punto de fin de este segmento como el mínimo entre el final del pico y el inicio del próximo pico
-    end = min(right_bases[i], left_bases[i+1] if i+1 < len(peaks) else len(accumulated_phase))
+for i in range(len(peaks) - 1):
+    # El final de un segmento es el punto medio entre el pico actual y el siguiente
+    end_index = (peaks[i] + peaks[i+1]) // 2
+    segment_indices.append((start_index, end_index))
     
-    # Añadimos el segmento expandido a la lista
-    expanded_segments.append(accumulated_phase[start:end])
+    # El inicio del siguiente segmento es el final del segmento actual
+    start_index = end_index
 
-    # El próximo inicio de expansión será el final de este segmento
-    start_expansion = end
+# Añadir el último segmento que va desde el último punto medio hasta el final de la señal
+segment_indices.append((start_index, len(accumulated_phase)))
 
-# Verificamos si la longitud total de los segmentos expandidos es igual a la longitud de la señal de fase acumulada
-assert sum(len(segment) for segment in expanded_segments) == len(accumulated_phase), "La longitud de los segmentos no concuerda con la señal de fase acumulada."
+# Ahora extraemos los segmentos de la señal de fase acumulada basándonos en los índices
+expanded_segments = [accumulated_phase[start:end] for start, end in segment_indices]
 
-# Regresamos la cantidad de segmentos y una muestra de los segmentos
-len(expanded_segments), expanded_segments[:2]  # Mostramos solo los primeros dos para verificar
+# Calculamos la longitud total de los segmentos expandidos para verificar
+total_length_segments = sum(len(segment) for segment in expanded_segments)
+
+# Comparamos la longitud total de los segmentos con la longitud de la señal de fase acumulada
+if total_length_segments != len(accumulated_phase):
+    print(f"La longitud total de los segmentos ({total_length_segments}) no coincide con la longitud de la señal acumulada ({len(accumulated_phase)}).")
+else:
+    print("La longitud de los segmentos coincide con la señal de fase acumulada.")
+#%%
+
+# Inicializamos la fase acumulada como un número complejo
+accumulated_phase_complex = np.zeros_like(accumulated_phase, dtype=complex)
+
+for segment in expanded_segments:
+    # Calcula la transformada de Hilbert del segmento
+    analytic_signal = hilbert(segment)
+    
+    # Calcula la fase del segmento
+    phase_segment = np.angle(analytic_signal)
+    
+    # Convierte la fase a su representación compleja
+    complex_representation = np.exp(1j * phase_segment)
+    
+    # Suma fasorial: sumar la representación compleja con la fase acumulada
+    accumulated_phase_complex[:len(segment)] += complex_representation
+    
+    # Para la parte de la señal que no está cubierta por el segmento actual, 
+    # mantenemos la última fase acumulada
+    if len(segment) < len(accumulated_phase):
+        accumulated_phase_complex[len(segment):] = accumulated_phase_complex[len(segment) - 1]
+
+# Convertir la representación compleja acumulada de nuevo a fase
+accumulated_phase_total = np.angle(accumulated_phase_complex)
+
+
+#%%
+thisfringes = 4
+fringesTest = fringes[thisfringes,:,:,:]
+real_fringe = np.abs(fringesTest) * np.cos(np.angle(fringesTest))
+# Recomponer la señal compleja
+recomposed_complex_signal = np.abs(real_fringe[:,1,1]) * np.exp(1j * accumulated_phase_total)
+fft_fringetest = np.fft.fftshift(np.fft.fft(fringesTest[:,1,1]))
+fft_complexsignal = np.fft.fftshift(np.fft.fft(recomposed_complex_signal))
+fft_realfringe = np.fft.fftshift(np.fft.fft(real_fringe[:,1,1]))
+
+
+
+fig = make_subplots(rows=2, cols=1)
+fig.add_trace(go.Scatter(y=abs(fft_fringetest), mode='lines', name='fft original complex_signal'), row=2, col=1)
+fig.add_trace(go.Scatter(y=abs(fft_complexsignal), mode='lines', name='fft estimated complex_signal'), row=2, col=1)
+fig.add_trace(go.Scatter(y=abs(fft_realfringe), mode='lines', name='fft real signal'), row=1, col=1)
+fig.show()
+# Ahora 'accumulated_phase_total' contiene la fase acumulativa total
 
 
 # fig=go.Figure()
