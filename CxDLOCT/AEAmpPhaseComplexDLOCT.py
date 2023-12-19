@@ -78,7 +78,7 @@ ntom = np.shape(fringes)[0]-1
 testfringes = fringes[ntom,:,:,:]
 trainfringes = fringes[0:ntom,:,:,:]
 #%% just plotting not important section
-thisfringes = 4
+thisfringes = 6
 # Assuming fringes1 is a 3D numpy array
 fringes1 = fringes[thisfringes,:,:,:]
 tom1True,tom1= reconstruct_tomogram(fringes1,z=4)
