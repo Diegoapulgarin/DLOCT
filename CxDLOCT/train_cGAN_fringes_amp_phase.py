@@ -2,6 +2,7 @@
 import numpy as np
 import os
 import matplotlib.pyplot as plt
+from numpy.fft import fft, fftshift
 #%% functions
 
 def extract_dimensions(file_name):
@@ -80,9 +81,11 @@ all_targets_partioned = np.transpose(np.array(all_targets_partioned),(1,2,3,0))
 all_targets_partioned = np.reshape(all_targets_partioned,(target_size,target_size,(np.shape(all_targets_partioned)[3]*np.shape(all_targets_partioned)[2])))
 all_tomograms_partioned = np.transpose(np.array(all_tomograms_partioned),(1,2,3,0))
 all_tomograms_partioned = np.reshape(all_tomograms_partioned,(target_size,target_size,(np.shape(all_tomograms_partioned)[3]*np.shape(all_tomograms_partioned)[2])))
+#%%
+all_targets_partioned = fftshift(fft())
 
 #%%
-bscan = 19
+bscan = 2
 fig,axs = plt.subplots(1,2)
 axs[0].imshow(10*np.log10(abs(all_targets_partioned[:,:,bscan])**2))
 axs[0].axis('off')
