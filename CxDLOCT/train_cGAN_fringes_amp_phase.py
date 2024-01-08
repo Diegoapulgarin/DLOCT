@@ -2,7 +2,7 @@
 import numpy as np
 import os
 import matplotlib.pyplot as plt
-from numpy.fft import fft, fftshift
+from numpy.fft import fft, fftshift,ifft
 #%% functions
 
 def extract_dimensions(file_name):
@@ -81,16 +81,14 @@ all_targets_partioned = np.transpose(np.array(all_targets_partioned),(1,2,3,0))
 all_targets_partioned = np.reshape(all_targets_partioned,(target_size,target_size,(np.shape(all_targets_partioned)[3]*np.shape(all_targets_partioned)[2])))
 all_tomograms_partioned = np.transpose(np.array(all_tomograms_partioned),(1,2,3,0))
 all_tomograms_partioned = np.reshape(all_tomograms_partioned,(target_size,target_size,(np.shape(all_tomograms_partioned)[3]*np.shape(all_tomograms_partioned)[2])))
-#%%
-all_targets_partioned = fftshift(fft())
-
-#%%
-bscan = 2
+all_targets_partioned = fftshift(ifft(fftshift(all_targets_partioned,axes=0),axis=0),axes=0)
+all_tomograms_partioned = fftshift(ifft(fftshift(all_tomograms_partioned,axes=0),axis=0),axes=0)
+bscan = 1
 fig,axs = plt.subplots(1,2)
-axs[0].imshow(10*np.log10(abs(all_targets_partioned[:,:,bscan])**2))
+axs[0].imshow((abs(all_targets_partioned[:,:,bscan])))
 axs[0].axis('off')
 axs[0].set_title('target')
-axs[1].imshow(10*np.log10(abs(all_tomograms_partioned[:,:,bscan])**2))
+axs[1].imshow((abs(all_tomograms_partioned[:,:,bscan])))
 axs[1].axis('off')
 axs[1].set_title('artifacts')
               
