@@ -294,7 +294,7 @@ def train(d_model, g_model, gan_model, dataset, n_epochs, n_batch=1):
 
 #%% read tomograms
 
-base_path = 'C:\\Users\\dpulgarin\\Documents\\Python Scripts\\CXDLOCT\\Experimental_Data_complex'
+base_path = r'C:\Users\USER\OneDrive - Universidad EAFIT\Complex conjugate artifacts data\Experimental_Data_complex'
 
 tissues = ['depth_nail']#, 'depth_fovea', 'depth_opticNerve','depth_chicken']
 all_tomograms = []
@@ -331,8 +331,8 @@ for tissue in tissues:
 
 all_tomograms = np.array(all_tomograms)
 all_targets = np.array(all_targets)
-# all_tomograms = all_tomograms[:,:,0:10]
-# all_targets = all_targets[:,:,0:10]
+all_tomograms = all_tomograms[:,:,0:10]
+all_targets = all_targets[:,:,0:10]
 #%%
 target_size = 512
 middle_bscan = int(dimensions[0]/2)
