@@ -73,6 +73,7 @@ with open(data_path, 'rb') as file:
         # Reshape y almacenar en el array 'fringes'
         fringes[:, :, bscan_index - (roi[0] - 1), :] = this_fringe.reshape((int(n_samples), int(n_alines), n_ch), order='F')
 #%%
-tom = fftshift(fft(fftshift(fringes, axes=0), axis=0), axes=0)     
+# tom = fftshift(fft(fftshift(fringes, axes=0), axis=0), axes=0)     
 #%%
-plt.imshow(10*np.log10(abs(tom[:,:,0,0])**2))
+# plt.imshow(10*np.log10(abs(tom[:,:,0,0])**2))
+
