@@ -203,17 +203,40 @@ del all_tomograms, all_targets
 nperseg = 64
 noverlap = int(nperseg * 0.75)
 fs=279273
-hacer listas
-for i in range(np.shape(fringes_targets[0])):
-    stft_volume = compute_separate_stft_for_volume(fringes_targets[i,:,:,:],fs, nperseg, noverlap)
-    normalized_volume, normalization_stats = normalize_magnitude_spectrogram(stft_volume)
+normalized_stft_tomograms = []
+normalized_stft_targets = []
+stats_tomograms = []
+stats_targets = []
+for i in range(np.shape(fringes_targets)[0]):
+    stft_volume_tomograms = compute_separate_stft_for_volume(fringes_tomograms[i,:,:,:],fs, nperseg, noverlap)
+    stft_volume_targets = compute_separate_stft_for_volume(fringes_targets[i,:,:,:],fs, nperseg, noverlap)
+    normalized_volume_tomograms, normalization_stats_tomograms = normalize_magnitude_spectrogram(stft_volume_tomograms)
+    normalized_volume_targets, normalization_stats_targets = normalize_magnitude_spectrogram(stft_volume_targets)
+    normalized_stft_tomograms.append(normalized_volume_tomograms)
+    normalized_stft_targets.append(normalized_volume_targets)
+    stats_tomograms.append(normalization_stats_tomograms)
+    stats_targets.append(normalization_stats_targets)
 
+normalized_stft_tomograms = np.array(normalized_stft_tomograms)
+normalized_stft_targets = np.array(normalized_stft_targets)
+stats_tomograms = np.array(stats_tomograms)
+stats_targets = np.array(stats_targets)
 
+del stft_volume_tomograms, stft_volume_targets, normalized_volume_tomograms, normalized_volume_targets,normalization_stats_targets,normalization_stats_tomograms
+# del fringes_targets,fringes_tomograms
 #%%
+X = np.transpose(normalized_stft_tomograms,(1,2,3,4,5,0))
+dim = np.shape(X)
+X = np.reshape(X,(dim[0],dim[1],dim[2],dim[3],(dim[4]*dim[5])))
 
-
+Y = np.transpose(normalized_stft_targets,(1,2,3,4,5,0))
+dim = np.shape(Y)
+Y = np.reshape(Y,(dim[0],dim[1],dim[2],dim[3],(dim[4]*dim[5])))
+#%%
+del normalized_stft_targets,normalized_stft_tomograms
 # Example usage (assuming normalized_volume and target_volume are defined and have the correct shape):
-X_train, X_test, y_train, y_test = prepare_data_for_training(normalized_volume, target_volume)
+X_train, X_test, y_train, y_test = prepare_data_for_training(X, Y)
+
 # print(X_train.shape, X_test.shape, y_train.shape, y_test.shape)  # Shapes of the training and test datasets
 
 #%%
