@@ -1,19 +1,10 @@
-#%%
 import numpy as np
 import os
 from numpy.fft import fft, fft2,fftshift,ifft,ifft2,ifftshift
 import matplotlib.pyplot as plt
 from scipy.signal import stft, istft
 from sklearn.model_selection import train_test_split
-from tensorflow.keras.layers import Input, Conv2D, BatchNormalization, Activation, Conv2DTranspose
-from tensorflow.keras.models import Model
-from tensorflow.keras.optimizers import Adam, SGD, RMSprop, Nadam
-from tensorflow.keras.callbacks import LearningRateScheduler
-from tensorflow.keras import backend as K
-from tensorflow.keras.backend import clear_session
-from tensorflow.keras.losses import MeanSquaredError, Huber, MeanAbsoluteError, LogCosh
 #%%
-
 def fast_reconstruct(array):
     tom = fftshift(fft(fftshift(array,axes=0),axis=0),axes=0)
     return tom
@@ -181,24 +172,7 @@ fringes_tomograms = fftshift(fft(fftshift(all_tomograms,axes=0),axis=0),axes=0)
 fringes_targets = fftshift(fft(fftshift(all_targets,axes=0),axis=0),axes=0)
 del all_tomograms, all_targets
 #%%
-# nperseg = 64  # Por ejemplo, si has decidido que este es un buen tamaño de segmento
-# noverlap = int(nperseg * 0.75)  # 75% de solapamiento
-# fs=279273
-# f, t, Zxx1 = stft(np.real(fringes_tomograms[0,:,0,0]), fs=fs, nperseg=nperseg, noverlap=noverlap)
-# f, t, Zxx2 = stft(np.real(fringes_targets[0,:,0,0]), fs=fs, nperseg=nperseg, noverlap=noverlap)
-# fig,axs = plt.subplots(1,2)
-# axs[0].imshow(abs(Zxx1)**2)
-# # axs[0].set_axis('off')
-# axs[0].set_title('artifacts')
-# axs[1].imshow(abs(Zxx2)**2)
-# # axs[1].set_axis('off')
-# axs[1].set_title('no artifacts')
-# #%%
-# plt.imshow(10*np.log10(abs(all_targets[0,:,:,0])**2))
-# t, A_line_reconstructed = istft(Zxx2, fs=fs, nperseg=nperseg, noverlap=noverlap)
-# plt.plot(A_line_reconstructed)
-#%%
-nperseg = 128
+nperseg = 127
 noverlap = int(nperseg * 0.9)
 fs=279273
 normalized_stft_tomograms = []
@@ -230,134 +204,158 @@ dim = np.shape(Y)
 Y = np.reshape(Y,(dim[0],dim[1],dim[2],dim[3],(dim[4]*dim[5])))
 del normalized_stft_targets,normalized_stft_tomograms
 X_train, X_test, y_train, y_test = prepare_data_for_training(X, Y)
-#%%
 shape = np.shape(X_train)
-
-
-clear_session()
-
-def fcn_spectrogram_model(input_shape):
-    inputs = Input(input_shape)
-
-    # Capa 1
-    conv1 = Conv2D(64, (3, 3), padding='same')(inputs)
-    conv1 = BatchNormalization()(conv1)
-    conv1 = Activation('relu')(conv1)
-
-    # Capa 2
-    conv2 = Conv2D(128, (3, 3), padding='same')(conv1)
-    conv2 = BatchNormalization()(conv2)
-    conv2 = Activation('relu')(conv2)
-
-    conv2 = Conv2D(256, (3, 3), padding='same')(conv1)
-    conv2 = BatchNormalization()(conv2)
-    conv2 = Activation('relu')(conv2)
-
-    conv2 = Conv2D(512, (3, 3), padding='same')(conv1)
-    conv2 = BatchNormalization()(conv2)
-    conv2 = Activation('relu')(conv2)
-
-    # Más capas convolucionales según sea necesario
-
-    # Capa de salida para reconstruir el espectrograma
-    outputs = Conv2D(2, (1, 1), activation='sigmoid')(conv2)
-
-    model = Model(inputs=inputs, outputs=outputs)
-    # model.compile(optimizer='adam', loss='mean_squared_error', metrics=['accuracy'])
-
-    return model
-
-# Crear el modelo
-fcn_model = fcn_spectrogram_model((shape[1],shape[2],shape[3]))
-
-
-# Definir un programador de tasa de aprendizaje que disminuya con el tiempo
-def lr_schedule(epoch, lr):
-    if epoch > 1:
-        lr = lr / 2
-    return lr
-
-lr_scheduler = LearningRateScheduler(lr_schedule)
-
-# # MSE + Adam 
-# fcn_model.compile(
-#     optimizer=Adam(learning_rate=0.001),  # Puedes ajustar la tasa de aprendizaje inicial aquí
-#     loss='mean_squared_error',  # O cambiar a 'mean_absolute_error' o 'logcosh'
-#     metrics=['accuracy'])
-# MSE + SGD
-fcn_model.compile(
-    optimizer=SGD(learning_rate=0.01, momentum=0.9),
-    loss=MeanSquaredError(),
-    metrics=['accuracy'])
-
-# # Huber + Adam
-# fcn_model.compile(
-#     optimizer=Adam(learning_rate=0.001),
-#     loss=Huber(delta=1.0),
-#     metrics=['accuracy'])
-
-# # MAE + RMSprop
-# fcn_model.compile(
-#     optimizer=RMSprop(learning_rate=0.001),
-#     loss=MeanAbsoluteError(),
-#     metrics=['accuracy'])
-
-# # Log Cosh + Nadam
-# fcn_model.compile(
-#     optimizer=Nadam(learning_rate=0.001),
-#     loss=LogCosh(),
-#     metrics=['accuracy'])
-
-fcn_model.summary()
-# Entrenamiento del modelo con el programador de tasa de aprendizaje
-history = fcn_model.fit(
-    X_train, y_train,
-    validation_data=(X_test, y_test),
-    epochs=10,
-    batch_size=16,
-    callbacks=[lr_scheduler]  # Agregar el programador de LR a los callbacks
-)
-
+input_shape = (shape[1],shape[2],shape[3])
+print(input_shape)
 #%%
+from tensorflow.keras import layers, Model
+import tensorflow as tf
 
-def plot_inference(model, X_test, y_test, num_samples=5):
-    predictions = model.predict(X_test[:num_samples])
+def plot_generated_images(epoch, generator, X_data, y_data, examples=3, figsize=(12, 4),pathToSave=''):
+    # Seleccionar muestras aleatorias
     
-    for i in range(num_samples):
-        plt.figure(figsize=(12, 4))
+    idx = np.random.randint(0, X_data.shape[0], examples)
+    x_samples = X_data[idx]
+    y_samples = y_data[idx]
+    
+    generated_images = generator.predict(x_samples)
 
-        # Recomponer el espectrograma de la entrada
-        input_spectrogram = X_test[i, :, :, 0] + 1j * X_test[i, :, :, 1]
-        
-        # Recomponer el espectrograma de la salida real
-        real_spectrogram = y_test[i, :, :, 0] + 1j * y_test[i, :, :, 1]
+    for i in range(examples):
+        # Combinar las partes real e imaginaria para formar el espectrograma
+        generated_spectrogram = np.abs(generated_images[i, :, :, 0] + 1j * generated_images[i, :, :, 1])
+        real_spectrogram = np.abs(y_samples[i, :, :, 0] + 1j * y_samples[i, :, :, 1])
 
-        # Recomponer el espectrograma de la predicción
-        predicted_spectrogram = predictions[i, :, :, 0] + 1j * predictions[i, :, :, 1]
+        plt.figure(figsize=figsize)
 
-        # Muestra la entrada
+        # Visualización de la entrada
         plt.subplot(1, 3, 1)
-        plt.imshow(np.abs(input_spectrogram), cmap='gray')
-        plt.title("Entrada")
+        plt.imshow(np.abs(x_samples[i, :, :, 0] + 1j * x_samples[i, :, :, 1]), cmap='gray')
+        plt.title('Input')
 
-        # Muestra la salida real
+        # Visualización de la imagen generada
         plt.subplot(1, 3, 2)
-        plt.imshow(np.abs(real_spectrogram), cmap='gray')
-        plt.title("Salida Real")
+        plt.imshow(generated_spectrogram, cmap='gray')
+        plt.title('Generated')
 
-        # Muestra la predicción del modelo
+        # Visualización de la imagen objetivo
         plt.subplot(1, 3, 3)
-        plt.imshow(np.abs(predicted_spectrogram), cmap='gray')
-        plt.title("Predicción del Modelo")
+        plt.imshow(real_spectrogram, cmap='gray')
+        plt.title('Real')
 
-        plt.show()
-
-# Ejemplo de uso
-plot_inference(fcn_model, X_test, y_test)
-
+        plt.tight_layout()
+        plt.savefig(os.path.join(pathToSave,f'gan_generated_image_epoch_{epoch+1}_example_{i}.png'))
+        plt.close()
 
 
-# t, A_line_reconstructed = istft(stft_volume[0,0,:,0,:], fs=fs, nperseg=nperseg, noverlap=noverlap)
-# plt.plot(A_line_reconstructed)
+def build_generator(input_shape=(64, 80, 2)):
+    inputs = layers.Input(shape=input_shape)
+
+    # Encoder: Capas de downsampling
+    down1 = layers.Conv2D(64, (3, 3), activation='relu', padding='same')(inputs)
+    down1_pool = layers.MaxPooling2D((2, 2), strides=2)(down1)
+
+    # Aquí podrías agregar más capas de downsampling si es necesario
+
+    # Decoder: Capas de upsampling
+    up1 = layers.UpSampling2D((2, 2))(down1_pool)
+    up1_conv = layers.Conv2D(64, (3, 3), activation='relu', padding='same')(up1)
+
+    # Aquí podrías agregar más capas de upsampling si es necesario
+
+    # Salida del generador
+    outputs = layers.Conv2D(2, (1, 1), activation='tanh')(up1_conv)
+
+    return Model(inputs=inputs, outputs=outputs)
+
+def build_discriminator(input_shape=(64, 80, 4)):
+    inputs = layers.Input(shape=input_shape)
+
+    conv1 = layers.Conv2D(64, (3, 3), strides=(2, 2), padding='same')(inputs)
+    conv1_leaky = layers.LeakyReLU(alpha=0.2)(conv1)
+
+    # Aquí podrías agregar más capas convolucionales si es necesario
+
+    outputs = layers.Conv2D(1, (3, 3), activation='sigmoid', padding='same')(conv1_leaky)
+
+    return Model(inputs=inputs, outputs=outputs)
+
+# input_shape = (256, 256, 2) # Ajustar según las dimensiones de tus espectrogramas
+
+# Construir el generador y el discriminador
+generator = build_generator()
+discriminator = build_discriminator()
+
+# Compilar el discriminador
+discriminator.compile(optimizer='adam', loss='binary_crossentropy')
+
+# Compilar la GAN completa
+gan_input = tf.keras.layers.Input(shape=(64, 80, 2))
+fake_image = generator(gan_input)
+discriminator.trainable = False
+# Concatena la imagen de entrada con la imagen generada
+combined_images = tf.keras.layers.Concatenate(axis=-1)([gan_input, fake_image])
+
+# Configura el discriminador para que no sea entrenable
+discriminator.trainable = False
+
+# La salida de la GAN es la salida del discriminador
+gan_output = discriminator(combined_images)
+
+gan = Model(gan_input, gan_output)
+gan.compile(optimizer='adam', loss='binary_crossentropy')
+
+# Parámetros de entrenamiento
+epochs = 30
+batch_size = 32
+visualization = 10
+pathToSave = r'C:\Users\USER\Documents\models\pix2pixstft'
+# Bucle de entrenamiento
+for epoch in range(epochs):
+    print(f"Epoch {epoch+1}/{epochs}")
+
+    for i in range(0, len(X_train), batch_size):
+        # Obtener lote de datos
+        X_real = X_train[i:i + batch_size]
+        y_real = y_train[i:i + batch_size]
+        
+        # Generar imágenes falsas
+        y_fake = generator.predict(X_real)
+
+        # Concatenar la entrada y la salida real para el discriminador
+        input_real = np.concatenate([X_real, y_real], axis=-1)
+
+        # Concatenar la entrada y la salida generada para el discriminador
+        input_fake = np.concatenate([X_real, y_fake], axis=-1)
+
+        # Etiquetas para datos reales y falsos
+        discriminator_output_shape = discriminator.output_shape[1:]
+
+# Crear etiquetas para datos reales y falsos con el tamaño de salida del discriminador
+        real_labels = np.ones((batch_size, *discriminator_output_shape))
+        fake_labels = np.zeros((batch_size, *discriminator_output_shape))
+
+        # Entrenar el discriminador
+        discriminator_loss_real = discriminator.train_on_batch(input_real, real_labels)
+        discriminator_loss_fake = discriminator.train_on_batch(input_fake, fake_labels)
+        discriminator_loss = 0.5 * np.add(discriminator_loss_real, discriminator_loss_fake)
+
+        # Etiquetas para engañar al discriminador
+        # Crear trick_labels para engañar al discriminador
+        # Ajustar las dimensiones de trick_labels para coincidir con la salida del discriminador
+        trick_labels = np.ones((batch_size, 32, 40, 1))  # Asegúrate de que tenga 4 dimensiones
+
+  # Ajustar las dimensiones para coincidir con la salida del discriminador
+
+
+        # Entrenar el generador
+        generator_loss = gan.train_on_batch(X_real,trick_labels)
+
+        # Progreso del entrenamiento
+        print(f"Batch {i//batch_size}: [Discriminator loss: {discriminator_loss}] [Generator loss: {generator_loss}]")
+    if (epoch + 1) % visualization == 0:
+        plot_generated_images(epoch, generator, X_train, y_train)
+        generator.save(os.path.join(pathToSave,f'generator_epoch_{epoch+1}.h5'))
+
+    # Opcional: Guardar el modelo al final de cada época
+    # generator.save('generator_epoch_{epoch}.h5')
 #%%
-
