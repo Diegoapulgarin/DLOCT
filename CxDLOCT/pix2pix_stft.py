@@ -4,6 +4,26 @@ from numpy.fft import fft, fft2,fftshift,ifft,ifft2,ifftshift
 import matplotlib.pyplot as plt
 from scipy.signal import stft, istft
 from sklearn.model_selection import train_test_split
+
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.optimizers import RMSprop
+from tensorflow.keras.optimizers import SGD
+from keras.initializers import RandomNormal
+from keras.models import Model
+from keras import Input
+from keras.layers import Conv2D
+from keras.layers import Conv2DTranspose
+from keras.layers import LeakyReLU
+from keras.layers import Activation
+from keras.layers import Concatenate
+from keras.layers import Dropout
+from keras.layers import BatchNormalization
+from keras.layers import ReLU
+from numpy import load
+from numpy import zeros
+from numpy import ones
+from numpy.random import randint
+from matplotlib import pyplot
 #%%
 def fast_reconstruct(array):
     tom = fftshift(fft(fftshift(array,axes=0),axis=0),axes=0)
@@ -141,6 +161,7 @@ tissues = ['depth_nail']#,'depth_chicken_breast','depth_nail_2','depth_chicken_b
 all_tomograms = []
 all_targets = []
 bscans = 5
+zlen = 1000
 for tissue in tissues:
     print(tissue, ' loading')
     artifact_path = os.path.join(base_path, 'tomogram_artifacts', tissue)
@@ -154,7 +175,7 @@ for tissue in tissues:
         tomReal = read_tomogram(real_file_path, dimensions)
         tomImag = read_tomogram(imag_file_path, dimensions)
         tom = tomReal + 1j * tomImag
-        all_tomograms.append(tom[:,:,0:bscans])
+        all_tomograms.append(tom[0:zlen,:,0:bscans])
         del tom, tomImag, tomReal
     for imag_file, real_file in zip(no_artifact_files[::2], no_artifact_files[1::2]):
         real_file_path = os.path.join(no_artifact_path, real_file)
@@ -163,7 +184,7 @@ for tissue in tissues:
         tomReal = read_tomogram(real_file_path, dimensions)
         tomImag = read_tomogram(imag_file_path, dimensions)
         tom = tomReal + 1j * tomImag
-        all_targets.append(tom[:,:,0:bscans])
+        all_targets.append(tom[0:zlen,:,0:bscans])
     del tom, tomImag, tomReal
     print(tissue, ' loaded')
 all_tomograms = np.array(all_tomograms)
@@ -173,7 +194,7 @@ fringes_targets = fftshift(fft(fftshift(all_targets,axes=0),axis=0),axes=0)
 del all_tomograms, all_targets
 #%%
 nperseg = 127
-noverlap = int(nperseg * 0.9)
+noverlap = int(nperseg * 0.88)
 fs=279273
 normalized_stft_tomograms = []
 normalized_stft_targets = []
@@ -205,157 +226,257 @@ Y = np.reshape(Y,(dim[0],dim[1],dim[2],dim[3],(dim[4]*dim[5])))
 del normalized_stft_targets,normalized_stft_tomograms
 X_train, X_test, y_train, y_test = prepare_data_for_training(X, Y)
 shape = np.shape(X_train)
-input_shape = (shape[1],shape[2],shape[3])
-print(input_shape)
+image_shape = (shape[1],shape[2],shape[3])
+print(image_shape)
 #%%
-from tensorflow.keras import layers, Model
-import tensorflow as tf
-
-def plot_generated_images(epoch, generator, X_data, y_data, examples=3, figsize=(12, 4),pathToSave=''):
-    # Seleccionar muestras aleatorias
+# define the discriminator model
+def define_discriminator(image_shape):
+    # weight initialization
+    init = RandomNormal(stddev=0.02)
+    # source image input
+    in_src_image = Input(shape=image_shape)
+    # target image input
+    in_target_image = Input(shape=image_shape)
+    # concatenate images channel-wise
+    merged = Concatenate()([in_src_image, in_target_image])
+    # C64
+    d = Conv2D(64, (4,4), strides=(2,2), padding='same', kernel_initializer=init)(merged)
+    d = ReLU()(d)#LeakyReLU(alpha=0.2)(d) #LeakyReLU
     
-    idx = np.random.randint(0, X_data.shape[0], examples)
-    x_samples = X_data[idx]
-    y_samples = y_data[idx]
+    # C128
+    d = Conv2D(128, (4,4), strides=(2,2), padding='same', kernel_initializer=init)(d)
+    d = BatchNormalization()(d)
+    d = ReLU()(d)
+    # C256
+    d = Conv2D(256, (4,4), strides=(2,2), padding='same', kernel_initializer=init)(d)
+    d = BatchNormalization()(d)
+    d = ReLU()(d)
+    # C512
+    d = Conv2D(512, (4,4), strides=(2,2), padding='same', kernel_initializer=init)(d)
+    d = BatchNormalization()(d)
+    d = ReLU()(d)
+    # second last output layer
+    d = Conv2D(512, (4,4), padding='same', kernel_initializer=init)(d)
+    d = BatchNormalization()(d)
+    d = ReLU()(d)
+    # patch output
+    d = Conv2D(1, (4,4), padding='same', kernel_initializer=init)(d)
+    patch_out = Activation('relu')(d)
+    # define model
+    model = Model([in_src_image, in_target_image], patch_out)
+    # compile model
+    opt = Adam(learning_rate=0.0000001)#Adam , beta_1=0.5 , RMSprop
+    model.compile(loss=['binary_crossentropy'], optimizer=opt, loss_weights=None)#'binary_crossentropy'
     
-    generated_images = generator.predict(x_samples)
+    return model
+    
+# define an encoder block
+def define_encoder_block(layer_in, n_filters, batchnorm=True):
+    # weight initialization
+    init = RandomNormal(stddev=0.02)
+    # add downsampling layer
+    g = Conv2D(n_filters, (4,4), strides=(2,2), padding='same', kernel_initializer=init)(layer_in)
+    # conditionally add batch normalization
+    if batchnorm:
+        g = BatchNormalization()(g, training=True)
+    # leaky relu activation
+    g = LeakyReLU(alpha=0.2)(g)
+    return g
+    
+# define a decoder block
+def decoder_block(layer_in, skip_in, n_filters, dropout=True):
+    # weight initialization
+    init = RandomNormal(stddev=0.02)
+    # add upsampling layer
+    g = Conv2DTranspose(n_filters, (4,4), strides=(2,2), padding='same', kernel_initializer=init)(layer_in)
+    # add batch normalization
+    g = BatchNormalization()(g, training=True)
+    # conditionally add dropout
+    if dropout:
+        g = Dropout(0.5)(g, training=True)
+    # merge with skip connection
+    g = Concatenate()([g, skip_in])
+    # relu activation
+    g = Activation('relu')(g)
+    return g
 
-    for i in range(examples):
-        # Combinar las partes real e imaginaria para formar el espectrograma
-        generated_spectrogram = np.abs(generated_images[i, :, :, 0] + 1j * generated_images[i, :, :, 1])
-        real_spectrogram = np.abs(y_samples[i, :, :, 0] + 1j * y_samples[i, :, :, 1])
+# define the standalone generator model
+def define_generator(image_shape):
+    # weight initialization
+    init = RandomNormal(stddev=0.02)
+    # image input
+    in_image = Input(shape=image_shape)
+    # encoder model -> Secuencia de ConvoluciÃ³n y activaciÃ³n -> Encoder ascendente
+    e1 = define_encoder_block(in_image, 64, batchnorm=False)
+    e2 = define_encoder_block(e1, 128)
+    e3 = define_encoder_block(e2, 256)
+    e4 = define_encoder_block(e3, 512)
+    e5 = define_encoder_block(e4, 512)
+    # e6 = define_encoder_block(e5, 512)
+    #e7 = define_encoder_block(e6, 512)
+    # bottleneck, no batch norm and relu
+    b = Conv2D(512, (4,4), strides=(2,2), padding='same', kernel_initializer=init)(e5)
+    b = Activation('relu')(b)
+    # decoder model -> Secuencia de ConvoluciÃ³n y activaciÃ³n -> Decoder descendente
+    d1 = decoder_block(b, e5, 512)
+    d2 = decoder_block(d1, e4, 512)
+    d3 = decoder_block(d2, e3, 512)
+    d4 = decoder_block(d3, e2, 256, dropout=False)
+    d5 = decoder_block(d4, e1, 128, dropout=False)
+    # d6 = decoder_block(d5, e1, 64, dropout=False)
+    #d7 = decoder_block(d6, e1, 64, dropout=False)
+    # output
+    g = Conv2DTranspose(image_shape[2], (4,4), strides=(2,2), padding='same', kernel_initializer=init)(d5)
+    out_image = Activation('relu')(g) #'tanh'
+    # define model
+    model = Model(in_image, out_image)
+    return model
+    
+# define the combined generator and discriminator model, for updating the generator
+def define_gan(g_model, d_model, image_shape):
+    # make weights in the discriminator not trainable
+    d_model.trainable = False
+    # define the source image
+    in_src = Input(shape=image_shape)
+    # connect the source image to the generator input
+    gen_out = g_model(in_src)
+    # connect the source input and generator output to the discriminator input
+    dis_out = d_model([in_src, gen_out])
+    # src image as input, generated image and classification output
+    model = Model(in_src, [dis_out, gen_out])
+    # compile model
+    opt = RMSprop(learning_rate=0.0002)
+    model.compile(loss=['mean_squared_error', 'mae'], optimizer=opt, loss_weights=None) # =['mean_squared_error', 'mae']
+    return model
+    
+# load and prepare training images
+def load_real_samples(filename):
+    # load the compressed arrays
+    data = load(filename)
+    # unpack the arrays
+    X1, X2 = data['arr_0'], data['arr_1']
+    # scale from [0,255] to [-1,1]
+    X1 = (X1 - 127.5) / 127.5
+    X2 = (X2 - 127.5) / 127.5
+    return [X1, X2]
+    
+# select a batch of random samples, returns images and target
+def generate_real_samples(dataset, n_samples, patch_shape):
+    # unpack dataset
+    trainA, trainB = dataset
+    # choose random instances
+    ix = randint(0, trainA.shape[0], n_samples)
+    # retrieve selected images
+    X1, X2 = trainA[ix], trainB[ix]
+    # slice max and min
+    # generate âœ¬realâœ¬ class labels (1)
+    y = ones((n_samples, patch_shape, patch_shape, 1))
+    return [X1, X2], y 
+    
+# generate a batch of images, returns images and targets
+def generate_fake_samples(g_model, samples, patch_shape):
+    # generate fake instance
+    X = g_model.predict(samples)
+    # create âœ¬fakeâœ¬ class labels (0)
+    y = zeros((len(X), patch_shape, patch_shape, 1))
+    return X, y
 
-        plt.figure(figsize=figsize)
+# generate samples and save as a plot and save the model
+def summarize_performance(step, g_model, dataset, n_samples=3):
+    # select a sample of input images
+    [X_realA, X_realB], _ = generate_real_samples(dataset, n_samples,1)
+    # generate a batch of fake samples
+    X_fakeB, _ = generate_fake_samples(g_model, X_realA, 1)
+    # plot real source images
+    for i in range(n_samples):
+        spectogram = X_realA[i]
+        plot0 = spectogram[:,:,0]+1j*spectogram[:,:,1]
+        pyplot.subplot(3, n_samples, 1 + i)
+        pyplot.axis('off')
+        pyplot.imshow(abs(plot0), cmap='gray')
+    # plot generated target image
+    for i in range(n_samples):
+        spectogram = X_fakeB[i]
+        plot1 = spectogram[:,:,0]+1j*spectogram[:,:,1]
+        pyplot.subplot(3, n_samples, 1 + n_samples + i)
+        pyplot.axis('off')
+        pyplot.imshow(abs(plot1), cmap='gray')
+    # plot real target image
+    for i in range(n_samples):
+        spectogram = X_realB[i]
+        plot2 = spectogram[:,:,0]+1j*spectogram[:,:,1]
+        pyplot.subplot(3, n_samples, 1 + n_samples*2 + i)
+        pyplot.axis('off')
+        pyplot.imshow(abs(plot2), cmap='gray')
+    # save plot to file
+    filename1 = 'C:/Users/USER/Documents/GitHub/plot_%06d.png' % (step+1)
+    pyplot.savefig(filename1)
+    pyplot.close()
+    # save the generator model
+    filename2 = 'C:/Users/USER/Documents/GitHub/model_%06d.h5' % (step+1)
+    g_model.save(filename2)
+    print('>Saved: %s and %s' % (filename1, filename2))
 
-        # Visualización de la entrada
-        plt.subplot(1, 3, 1)
-        plt.imshow(np.abs(x_samples[i, :, :, 0] + 1j * x_samples[i, :, :, 1]), cmap='gray')
-        plt.title('Input')
-
-        # Visualización de la imagen generada
-        plt.subplot(1, 3, 2)
-        plt.imshow(generated_spectrogram, cmap='gray')
-        plt.title('Generated')
-
-        # Visualización de la imagen objetivo
-        plt.subplot(1, 3, 3)
-        plt.imshow(real_spectrogram, cmap='gray')
-        plt.title('Real')
-
-        plt.tight_layout()
-        plt.savefig(os.path.join(pathToSave,f'gan_generated_image_epoch_{epoch+1}_example_{i}.png'))
-        plt.close()
-
-
-def build_generator(input_shape=(64, 80, 2)):
-    inputs = layers.Input(shape=input_shape)
-
-    # Encoder: Capas de downsampling
-    down1 = layers.Conv2D(64, (3, 3), activation='relu', padding='same')(inputs)
-    down1_pool = layers.MaxPooling2D((2, 2), strides=2)(down1)
-
-    # Aquí podrías agregar más capas de downsampling si es necesario
-
-    # Decoder: Capas de upsampling
-    up1 = layers.UpSampling2D((2, 2))(down1_pool)
-    up1_conv = layers.Conv2D(64, (3, 3), activation='relu', padding='same')(up1)
-
-    # Aquí podrías agregar más capas de upsampling si es necesario
-
-    # Salida del generador
-    outputs = layers.Conv2D(2, (1, 1), activation='tanh')(up1_conv)
-
-    return Model(inputs=inputs, outputs=outputs)
-
-def build_discriminator(input_shape=(64, 80, 4)):
-    inputs = layers.Input(shape=input_shape)
-
-    conv1 = layers.Conv2D(64, (3, 3), strides=(2, 2), padding='same')(inputs)
-    conv1_leaky = layers.LeakyReLU(alpha=0.2)(conv1)
-
-    # Aquí podrías agregar más capas convolucionales si es necesario
-
-    outputs = layers.Conv2D(1, (3, 3), activation='sigmoid', padding='same')(conv1_leaky)
-
-    return Model(inputs=inputs, outputs=outputs)
-
-# input_shape = (256, 256, 2) # Ajustar según las dimensiones de tus espectrogramas
-
-# Construir el generador y el discriminador
-generator = build_generator()
-discriminator = build_discriminator()
-
-# Compilar el discriminador
-discriminator.compile(optimizer='adam', loss='binary_crossentropy')
-
-# Compilar la GAN completa
-gan_input = tf.keras.layers.Input(shape=(64, 80, 2))
-fake_image = generator(gan_input)
-discriminator.trainable = False
-# Concatena la imagen de entrada con la imagen generada
-combined_images = tf.keras.layers.Concatenate(axis=-1)([gan_input, fake_image])
-
-# Configura el discriminador para que no sea entrenable
-discriminator.trainable = False
-
-# La salida de la GAN es la salida del discriminador
-gan_output = discriminator(combined_images)
-
-gan = Model(gan_input, gan_output)
-gan.compile(optimizer='adam', loss='binary_crossentropy')
-
-# Parámetros de entrenamiento
-epochs = 30
-batch_size = 32
-visualization = 10
-pathToSave = r'C:\Users\USER\Documents\models\pix2pixstft'
-# Bucle de entrenamiento
-for epoch in range(epochs):
-    print(f"Epoch {epoch+1}/{epochs}")
-
-    for i in range(0, len(X_train), batch_size):
-        # Obtener lote de datos
-        X_real = X_train[i:i + batch_size]
-        y_real = y_train[i:i + batch_size]
+# train pix2pix models
+def train(d_model, g_model, gan_model, dataset, n_epochs, n_batch=1):
+    # determine the output square shape of the discriminator
+    n_patch = d_model.output_shape[1]
+    # unpack dataset
+    trainA, trainB = dataset
+    # calculate the number of batches per training epoch
+    bat_per_epo = int(len(trainA) / n_batch)
+    # calculate the number of training iterations
+    n_steps = bat_per_epo * n_epochs
+    # manually enumerate epochs
+    d_loss1_val = []
+    d_loss2_val = []
+    g_loss_val  = []
+    n_steps_val = []
+    for i in range(n_steps):
+        # select a batch of real samples
+        [X_realA, X_realB], y_real = generate_real_samples(dataset, n_batch, n_patch)
+        # generate a batch of fake samples
+        X_fakeB, y_fake = generate_fake_samples(g_model, X_realA, n_patch)
+        # update discriminator for real samples
+        d_loss1 = d_model.train_on_batch([X_realA, X_realB], y_real)
+        # update discriminator for generated samples
+        d_loss2 = d_model.train_on_batch([X_realA, X_fakeB], y_fake)
+        # update the generator
+        g_loss, _, _ = gan_model.train_on_batch(X_realA, [y_real, X_realB])
+        # summarize performance
+        print('>%d/%d, d1[%.3f] d2[%.3f] g[%.3f]' % (i+1,n_steps, d_loss1, d_loss2, g_loss))
+        d_loss1_val.append(d_loss1)
+        d_loss2_val.append(d_loss2)
+        g_loss_val.append(g_loss)
         
-        # Generar imágenes falsas
-        y_fake = generator.predict(X_real)
+        #summarize model performance
+        if (i+1) % (bat_per_epo * 1) == 0:
+            summarize_performance(i, g_model, dataset)
+            # calculate mean of losses in epoch
+            d_loss1_mean = np.array(d_loss1_val).mean()
+            d_loss2_mean = np.array(d_loss2_val).mean()
+            g_loss_mean = np.array(g_loss_val).mean()
+            # concatenate losses values
+            d_loss1_epoch.append(d_loss1_mean)
+            d_loss2_epoch.append(d_loss2_mean)
+            g_loss_epoch.append(g_loss_mean)
+            n_steps_epoch.append(int(i/bat_per_epo))
+            # reset losses values
+            d_loss1_val = []
+            d_loss2_val = []
+            g_loss_val  = []
 
-        # Concatenar la entrada y la salida real para el discriminador
-        input_real = np.concatenate([X_real, y_real], axis=-1)
-
-        # Concatenar la entrada y la salida generada para el discriminador
-        input_fake = np.concatenate([X_real, y_fake], axis=-1)
-
-        # Etiquetas para datos reales y falsos
-        discriminator_output_shape = discriminator.output_shape[1:]
-
-# Crear etiquetas para datos reales y falsos con el tamaño de salida del discriminador
-        real_labels = np.ones((batch_size, *discriminator_output_shape))
-        fake_labels = np.zeros((batch_size, *discriminator_output_shape))
-
-        # Entrenar el discriminador
-        discriminator_loss_real = discriminator.train_on_batch(input_real, real_labels)
-        discriminator_loss_fake = discriminator.train_on_batch(input_fake, fake_labels)
-        discriminator_loss = 0.5 * np.add(discriminator_loss_real, discriminator_loss_fake)
-
-        # Etiquetas para engañar al discriminador
-        # Crear trick_labels para engañar al discriminador
-        # Ajustar las dimensiones de trick_labels para coincidir con la salida del discriminador
-        trick_labels = np.ones((batch_size, 32, 40, 1))  # Asegúrate de que tenga 4 dimensiones
-
-  # Ajustar las dimensiones para coincidir con la salida del discriminador
-
-
-        # Entrenar el generador
-        generator_loss = gan.train_on_batch(X_real,trick_labels)
-
-        # Progreso del entrenamiento
-        print(f"Batch {i//batch_size}: [Discriminator loss: {discriminator_loss}] [Generator loss: {generator_loss}]")
-    if (epoch + 1) % visualization == 0:
-        plot_generated_images(epoch, generator, X_train, y_train)
-        generator.save(os.path.join(pathToSave,f'generator_epoch_{epoch+1}.h5'))
-
-    # Opcional: Guardar el modelo al final de cada época
-    # generator.save('generator_epoch_{epoch}.h5')
 #%%
+dataset = [X_train,y_train]
+#%%
+# define the models
+d_model = define_discriminator(image_shape)
+g_model = define_generator(image_shape)
+gan_model = define_gan(g_model, d_model, image_shape)
+d_loss1_epoch = []
+d_loss2_epoch = []
+g_loss_epoch  = []
+n_steps_epoch = []
+n_epochs = 10
+#%%
+train(d_model, g_model, gan_model, dataset,n_epochs)
