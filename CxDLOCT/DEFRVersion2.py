@@ -2,6 +2,7 @@
 import numpy as np
 import os
 import matplotlib.pyplot as plt
+import plotly.express as px
 from numpy.fft import fft,fftshift, ifft
 def fast_reconstruct(array):
     tom = fftshift(fft(fftshift(array,axes=0),axis=0),axes=0)
@@ -22,45 +23,42 @@ def read_tomogram(file_path, dimensions):
         tomogram = np.fromfile(file, dtype='single')
         tomogram = tomogram.reshape((depth, height, width),order='F')
     return tomogram
-def plot(bscan):
-     plt.imshow(10*np.log10(abs(bscan)**2),cmap='gray')
 
-def identify_max_component(spectrum):
+def plot(bscan,zmax,zmin):
+     fig = px.imshow(10*np.log10(abs(bscan)**2),color_continuous_scale='viridis',zmax=zmax,zmin=zmin)
+     fig.show()
+
+def identify_max_component_aline(aline):
     """
-    Identifica el componente máximo en el espectro dado.
+    Identifica el componente máximo en la A-line dada.
     
-    :param spectrum: El espectro (ci1 o ci2) como un array de NumPy.
-    :return: índice(s) y valor del componente máximo.
+    :param aline: La A-line (una dimensión de ci1 o ci2) como un array de NumPy.
+    :return: índice y valor del componente máximo en la A-line.
     """
-    max_value = np.max(spectrum)
-    max_index = np.unravel_index(np.argmax(spectrum), spectrum.shape)
+    max_value = np.max(aline)
+    max_index = np.argmax(aline)
     return max_index, max_value
 
-def update_outputs_and_subtract_artifacts(d1, d2, ci1, ci2, max_component_1_index, max_component_2_index):
+def update_outputs_and_subtract_artifacts_aline(d_aline, ci_aline, max_component_index):
     """
-    Actualiza los espectros y las salidas basándose en la eliminación de artefactos.
+    Actualiza la A-line basándose en la eliminación de artefactos.
     
-    :param d1: Salida acumulativa para ci1.
-    :param d2: Salida acumulativa para ci2.
-    :param ci1: Espectro compensado por dispersión.
-    :param ci2: Espectro no compensado por dispersión.
-    :param max_component_1_index: Índice del componente máximo en ci1.
-    :param max_component_2_index: Índice del componente máximo en ci2.
-    :return: Los espectros y las salidas actualizadas.
+    :param d_aline: Salida acumulativa para la A-line de ci.
+    :param ci_aline: A-line del espectro compensado por dispersión o no compensado.
+    :param max_component_index: Índice del componente máximo en la A-line.
+    :return: La A-line actualizada.
     """
-    # Ejemplo simplificado: sustraer el componente máximo de cada espectro
-    ci1[max_component_1_index] -= ci1[max_component_1_index]  # Ajustar según necesidades
-    ci2[max_component_2_index] -= ci2[max_component_2_index]  # Ajustar según necesidades
+    # Sustraer el componente máximo de la A-line
+    ci_aline[max_component_index] = 0  # Asumiendo que queremos eliminar ese pico por completo
+    d_aline[max_component_index] = 0  # Actualizar la salida acumulativa también
     
-    # Aquí se deberían implementar los ajustes reales basados en los detalles específicos del proceso
-    
-    return d1, d2, ci1, ci2
+    return d_aline, ci_aline
 
 #%%
 path = r'C:\Users\USER\OneDrive - Universidad EAFIT\Eafit\Trabajo de grado\Data Boston\[DepthWrap]\[p.DepthWrap][s.Fovea][09-20-2023_11-15-34]'
 file = '[p.Calibration][s.Mirror][02-10-2023_15-17-52].dispersion'
 dispersion = np.fromfile(os.path.join(path,file))
-plt.plot(dispersion)
+# plt.plot(dispersion)
 path = r'C:\Users\USER\Documents\GitHub\[s.fovea]11bscan'
 artifact_files = os.listdir(path)
 for imag_file, real_file in zip(artifact_files[::2], artifact_files[1::2]):
@@ -71,49 +69,85 @@ for imag_file, real_file in zip(artifact_files[::2], artifact_files[1::2]):
         tomImag = read_tomogram(imag_file_path, dimensions)
         tom = tomReal + 1j * tomImag
         del tomImag, tomReal
-# fringes = fftshift(ifft(fftshift(tom,axes=0),axis=0),axes=0)
+fringes = ifft(tom,axis=0)
 #%%
+# Parámetros para el modelo de dispersión (ajustar según sea necesario)
+B1 = 1.0  # Ejemplo de coeficiente para el modelo
+C1 = 1.0e-14  # Ejemplo de coeficiente (asegúrate de que esté en las unidades correctas)
+lambda_0 = 800e-9  # Longitud de onda central en metros
 
-phase_correction = np.exp(-1j * dispersion)[:, np.newaxis, np.newaxis]
-corrected_signal = tom * phase_correction
-corrected_volume =  fftshift(ifft(fftshift(corrected_signal,axes=0),axis=0),axes=0)
-# Convertir el volumen a magnitud para la detección de picos
-volume_magnitude = np.abs(corrected_volume)
-# Definir un umbral para la detección de picos
-threshold = np.mean(volume_magnitude) + 2 * np.std(volume_magnitude)
-# Detectar picos
-is_peak = volume_magnitude > threshold
-# Eliminar picos: Establecer los valores detectados como picos a un valor base, por ejemplo, cero o el valor mínimo del volumen
-corrected_volume[is_peak] = np.min(volume_magnitude)
+# Rango de números de onda k (inverso de la longitud de onda, asumiendo un espectro óptico)
+k_min = 2 * np.pi / (lambda_0 + 100e-9)  # Número de onda mínimo
+k_max = 2 * np.pi / (lambda_0 - 100e-9)  # Número de onda máximo
+k = np.linspace(k_min, k_max, 2304)  # Vector de números de onda
+
+# Conversión de número de onda a longitud de onda para usar en la ecuación de Sellmeier
+lambda_k = 2 * np.pi / k
+n_k = np.sqrt(1 + B1 * lambda_k**2 / (lambda_k**2 - C1))  # Índice de refracción
+phi_k = (n_k - 1) * k  # Fase de dispersión, asumiendo una longitud de referencia
+dispersion_compensation = np.exp(-1j * phi_k)
+negative_phase_correction = np.exp(-1j * dispersion_compensation)[:, np.newaxis, np.newaxis]
+c1 = ifft(fringes * negative_phase_correction, axis=0)
 #%%
-volume = fftshift(ifft(fftshift(tom,axes=0),axis=0),axes=0)
+# Aplicar la función de fase negativa y realizar la IFFT para obtener c1(n)
+negative_phase_correction = np.exp(-1j * dispersion)[:, np.newaxis, np.newaxis]
+c1 = ifft(fringes * negative_phase_correction, axis=0)
+c2 = ifft(fringes, axis=0)
+positive_phase_correction = np.exp(1j * dispersion)
+negative_phase_correction = np.exp(-1j * dispersion)
+double_negative_phase_correction = np.exp(-2j * dispersion)
+p1p = ifft(positive_phase_correction)
+p1n = ifft(negative_phase_correction)
+p2 =  ifft(double_negative_phase_correction)
 
-# Parámetros iniciales
-M = 10  # Número máximo de iteraciones
-T = 0.01  # Umbral para la detección de artefactos significativos
-
-# Inicialización de variables
-i = 0  # Índice de iteración
-d1 = np.zeros_like(corrected_volume)  # Salida para componentes de señal
-d2 = np.zeros_like(volume)  # Salida para componentes de autocorrelación (si es aplicable)
+#%%
+# plot(c1[500:1600,:,0]-c2[500:1600,:,0])
+M = 10  # Número máximo de iteraciones definido
+i = 0  # Índice de iteración inicial
+# Variables para acumular los resultados
+d1 = np.zeros_like(c1)  # Inicializar d1
+d2 = np.zeros_like(c2)  # Inicializar d2
+# Asumimos que 'N' es el número de muestras en la dirección z
+N = c1.shape[0]
 
 while i < M:
-    # Identificar los componentes de señal con mayor contribución
-    max_component_1_index,max_component_1 = identify_max_component(corrected_volume)
-    max_component_2_index,max_component_2 = identify_max_component(volume)  # Si aplica
+    for x in range(c1.shape[1]):
+        for y in range(c1.shape[2]):
+            # Identificar los índices de los máximos
+            n1_i = np.argmax(np.abs(c1[:, x, y]))
+            n2_i = np.argmax(np.abs(c2[:, x, y]))
+            
+            # Corrección pixel a pixel
+            for n in range(N):
+                # Compara los picos y actualiza los espectros y salidas
+                if np.abs(c1[n1_i, x, y]) > np.abs(c2[n2_i, x, y]):
+                    peak_value = c1[n1_i, x, y] - (c1[n1_i, x, y].conj() * p2[(n + n1_i) % N])
+                    d1[n, x, y] += c1[n1_i, x, y]  # Añadir el pico a d1[n]
+                    c1[n, x, y] -= peak_value  # Sustraer el pico corregido de c1[n]
+                    # Corrección de c2[n] dependiendo de la posición de n1_i
+                    if n1_i <= N//2:
+                        corrected_index = (n - n1_i) % N
+                        c2[n, x, y] -= peak_value * p1p[corrected_index]
+                    else:
+                        corrected_index = (n - n1_i + N) % N
+                        c2[n, x, y] -= peak_value.conj() * p1n[corrected_index]
+                else:
+                    peak_value = c2[n2_i, x, y] - (c2[n2_i, x, y].conj() * p1n[(n + n2_i) % N])
+                    d2[n, x, y] += c2[n2_i, x, y]  # Añadir el pico a d2[n]
+                    c2[n, x, y] -= peak_value  # Sustraer el pico corregido de c2[n]
+                    # Aseguramos que el índice esté dentro de los límites del array p1p
+                    corrected_index = (n - n2_i + N) % N
+                    c1[n, x, y] -= peak_value.conj() * p1p[corrected_index]  # Corrección de c1[n]
+    
+    i += 1
+    if i < M:
+        continue  # Volver al paso 2 si no se ha alcanzado el número máximo de iteraciones
+    else:
+        d1 += c1  # Añadir el espectro restante de c1 a d1
+        d2 += c2  # Añadir el espectro restante de c2 a d2
+        break  # Salir del bucle si se alcanza el número máximo de iteraciones
 
-    # Comparar con el umbral y decidir si proceder
-    if max_component_1 < T and max_component_2 < T:  # Ajustar condición según corresponda
-        break  # Salir del bucle si no hay componentes significativos
-
-    # Actualizar las salidas y restar los artefactos correspondientes
-    d1, d2, corrected_volume, volume = update_outputs_and_subtract_artifacts(d1, d2, corrected_volume, volume, max_component_1, max_component_2)
-
-    i += 1  # Incrementar el índice de iteración
-
-# Opcional: añadir el espectro restante a la salida
-# d1 += ci1
-# d2 += ci2  # Si aplica
-
+#%%
+plot(c1[:,:,0])
 
 
