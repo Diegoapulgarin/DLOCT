@@ -490,6 +490,6 @@ d_loss1_epoch = []
 d_loss2_epoch = []
 g_loss_epoch  = []
 n_steps_epoch = []
-n_epochs = 10
+n_epochs = 100
 #%%
 train(d_model, g_model, gan_model, dataset,n_epochs)
