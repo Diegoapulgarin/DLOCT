@@ -4,6 +4,7 @@ import os
 import matplotlib.pyplot as plt
 import plotly.express as px
 from numpy.fft import fft,fftshift, ifft
+
 def fast_reconstruct(array):
     tom = fftshift(fft(fftshift(array,axes=0),axis=0),axes=0)
     return tom
@@ -71,26 +72,56 @@ for imag_file, real_file in zip(artifact_files[::2], artifact_files[1::2]):
         del tomImag, tomReal
 fringes = ifft(tom,axis=0)
 #%%
-# Parámetros para el modelo de dispersión (ajustar según sea necesario)
-B1 = 1.0  # Ejemplo de coeficiente para el modelo
-C1 = 1.0e-14  # Ejemplo de coeficiente (asegúrate de que esté en las unidades correctas)
-lambda_0 = 800e-9  # Longitud de onda central en metros
+tom2 = fft(fringes,axis=0)
+#%%
 
-# Rango de números de onda k (inverso de la longitud de onda, asumiendo un espectro óptico)
-k_min = 2 * np.pi / (lambda_0 + 100e-9)  # Número de onda mínimo
-k_max = 2 * np.pi / (lambda_0 - 100e-9)  # Número de onda máximo
-k = np.linspace(k_min, k_max, 2304)  # Vector de números de onda
+# Calcular el número de puntos en el dominio k
+num_puntos_k = len(dispersion)
 
-# Conversión de número de onda a longitud de onda para usar en la ecuación de Sellmeier
-lambda_k = 2 * np.pi / k
-n_k = np.sqrt(1 + B1 * lambda_k**2 / (lambda_k**2 - C1))  # Índice de refracción
-phi_k = (n_k - 1) * k  # Fase de dispersión, asumiendo una longitud de referencia
-dispersion_compensation = np.exp(-1j * phi_k)
-negative_phase_correction = np.exp(-1j * dispersion_compensation)[:, np.newaxis, np.newaxis]
-c1 = ifft(fringes * negative_phase_correction, axis=0)
+# Crear un nuevo array k para el doble de puntos
+k_nuevo = np.linspace(-1, 1, 2 * num_puntos_k)
+
+# Interpolar la dispersión al nuevo dominio k
+dispersion_interpolada = np.interp(k_nuevo, np.linspace(-np.pi, np.pi, num_puntos_k), dispersion)
+
+
+
+fftDispersion = fft(dispersion_interpolada)[0:int(len(dispersion_interpolada)/2)]
+n = len(fftDispersion)
+# full_spectrum = np.zeros(len(fringes), dtype=complex)
+# full_spectrum[0:n] = fftDispersion  # Ignoramos el primer elemento por ahora
+# phasedispersion_resampled = np.angle(full_spectrum)
+phasedispersion = np.angle(ifft(fftDispersion))
+unwrapped_phase = np.unwrap(phasedispersion)
+coeficientes = np.polyfit(np.arange(len(unwrapped_phase)), unwrapped_phase, 4)
+polinomio = np.poly1d(coeficientes)
+fase_lineal = polinomio(np.arange(len(unwrapped_phase)))
+dispersivePhase = unwrapped_phase - fase_lineal
+
+inverseFourierDispersive = fftshift(ifft(np.exp(-2j*dispersivePhase)))
+# plt.plot(abs(inverseFourierDispersive))
+# # Parámetros para el modelo de dispersión (ajustar según sea necesario)
+# B1 = 1.0  # Ejemplo de coeficiente para el modelo
+# C1 = 1.0e-14  # Ejemplo de coeficiente (asegúrate de que esté en las unidades correctas)
+# lambda_0 = 800e-9  # Longitud de onda central en metros
+
+# # Rango de números de onda k (inverso de la longitud de onda, asumiendo un espectro óptico)
+# k_min = 2 * np.pi / (lambda_0 + 100e-9)  # Número de onda mínimo
+# k_max = 2 * np.pi / (lambda_0 - 100e-9)  # Número de onda máximo
+# k = np.linspace(k_min, k_max, 2304)  # Vector de números de onda
+
+# # Conversión de número de onda a longitud de onda para usar en la ecuación de Sellmeier
+# lambda_k = 2 * np.pi / k
+# n_k = np.sqrt(1 + B1 * lambda_k**2 / (lambda_k**2 - C1))  # Índice de refracción
+# phi_k = (n_k - 1) * k  # Fase de dispersión, asumiendo una longitud de referencia
+newfringes = ifft(fft(fringes,axis=0),axis=0)
+dispersion_compensation = np.exp(-1j * dispersivePhase)
+negative_phase_correction = np.exp(-1j * dispersivePhase)[:, np.newaxis, np.newaxis]
+c1 = ifft(newfringes * negative_phase_correction, axis=0)
+c2 = ifft(newfringes, axis=0)
 #%%
 # Aplicar la función de fase negativa y realizar la IFFT para obtener c1(n)
-negative_phase_correction = np.exp(-1j * dispersion)[:, np.newaxis, np.newaxis]
+# negative_phase_correction = np.exp(-1j * dispersion)[:, np.newaxis, np.newaxis]
 c1 = ifft(fringes * negative_phase_correction, axis=0)
 c2 = ifft(fringes, axis=0)
 positive_phase_correction = np.exp(1j * dispersion)

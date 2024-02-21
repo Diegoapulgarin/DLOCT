@@ -6,9 +6,9 @@ import matplotlib.pyplot as plt
 from scipy.signal import stft, istft
 from sklearn.model_selection import train_test_split
 
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.optimizers import RMSprop
-from tensorflow.keras.optimizers import SGD
+from keras.optimizers import Adam
+from keras.optimizers import RMSprop
+from keras.optimizers import SGD
 from keras.initializers import RandomNormal
 from keras.models import Model
 from keras import Input
@@ -25,6 +25,7 @@ from numpy import zeros
 from numpy import ones
 from numpy.random import randint
 from matplotlib import pyplot
+import tensorflow as tf
 #%%
 def fast_reconstruct(array):
     tom = fftshift(fft(fftshift(array,axes=0),axis=0),axes=0)
@@ -179,7 +180,7 @@ for imag_file, real_file in zip(artifact_files[::2], artifact_files[1::2]):
         tom = tomReal + 1j * tomImag
         del tomImag, tomReal
 fringescc = fftshift(ifft(tom,axis=0),axes=0)
-all_tomograms = np.array(fringescc[:,:,0:3])
+all_tomograms = np.array(fringescc[:,:,0:4])
 
 pathtarget = r'C:\Users\USER\Documents\GitHub\[s.fovea]11bscanNoartifacts'
 artifact_files = os.listdir(pathtarget)
@@ -192,7 +193,7 @@ for imag_file, real_file in zip(artifact_files[::2], artifact_files[1::2]):
         tom = tomReal + 1j * tomImag
         del tomImag, tomReal
 fringesreal = fftshift(ifft(tom,axis=0),axes=0)
-all_targets = np.array(fringesreal[:,:,0:3])
+all_targets = np.array(fringesreal[:,:,0:4])
 # all_targets = np.array(fringes)
 # fringes_tomograms = fftshift(fft(fftshift(all_tomograms,axes=0),axis=0),axes=0)
 # fringes_targets = fftshift(fft(fftshift(all_targets,axes=0),axis=0),axes=0)
@@ -238,6 +239,50 @@ Y[:,:,:,1] = np.imag(amp_normalized_targets*np.exp(1j*phase_targets))
 X = np.transpose(X,(2,0,1,3))
 Y = np.transpose(Y,(2,0,1,3))
 #%%
+def energy_based_symmetry_loss(y_true, y_pred, energy_threshold=1e-3):
+    y_pred_complex = tf.complex(y_pred[:, :, 0], y_pred[:, :, 1])
+    energy_left_half = tf.reduce_sum(tf.square(tf.abs(y_pred_complex[:, :y_pred.shape[1] // 2])), axis=1)
+    energy_right_half = tf.reduce_sum(tf.square(tf.abs(y_pred_complex[:, y_pred.shape[1] // 2:])), axis=1)
+    energy_difference = tf.abs(energy_left_half - energy_right_half)
+    energy_excess = tf.maximum(0.0, energy_difference - energy_threshold)
+    return tf.reduce_mean(energy_excess)
+
+
+def phase_consistency_loss(y_true, y_pred):
+    # Recomponer el espectrograma complejo
+    y_true_complex = tf.complex(y_true[:, :, 0], y_true[:, :, 1])
+    y_pred_complex = tf.complex(y_pred[:, :, 0], y_pred[:, :, 1])
+    
+    # ISTFT utilizando tf.signal.inverse_stft
+    y_true_time = tf.signal.inverse_stft(y_true_complex, frame_length, frame_step)
+    y_pred_time = tf.signal.inverse_stft(y_pred_complex, frame_length, frame_step)
+    
+    # Extraer y comparar fases
+    y_true_phase = tf.math.angle(y_true_time)
+    y_pred_phase = tf.math.angle(y_pred_time)
+    
+    # Calcular la pérdida de consistencia de fase
+    phase_loss = tf.reduce_mean(tf.abs(tf.math.squared_difference(y_true_phase, y_pred_phase)))
+    
+    return phase_loss
+
+def combined_loss(weights):
+    # Asumiendo que 'weights' es un diccionario con las claves 'mae', 'mse', 'phase', 'energy'
+    def loss(y_true, y_pred):
+        # Calcular las pérdidas individuales
+        mae_loss = tf.keras.losses.mean_absolute_error(y_true, y_pred)
+        mse_loss = tf.keras.losses.mean_squared_error(y_true, y_pred)
+        phase_loss = phase_consistency_loss(y_true, y_pred)  # Asegúrate de definir esta función
+        energy_loss = energy_based_symmetry_loss(y_true, y_pred)
+        
+        # Combina las pérdidas con los pesos dados
+        combined = (weights['mse'] * mse_loss +
+                    weights['mae'] * mae_loss +
+                    weights['phase'] * phase_loss +
+                    weights['energy'] * energy_loss)
+        return combined
+    return loss
+
 
 
 # define the discriminator model
@@ -357,8 +402,9 @@ def define_gan(g_model, d_model, image_shape):
     model = Model(in_src, [dis_out, gen_out])
     # compile model
     opt = RMSprop(learning_rate=0.0002)
-    model.compile(loss=['mean_squared_error', 'mae'], optimizer=opt, loss_weights=None) # =['mean_squared_error', 'mae']
+    model.compile(loss=combined_loss(weights), optimizer=opt) # =['mean_squared_error', 'mae']
     return model
+
     
 # load and prepare training images
 def load_real_samples(filename):
@@ -482,10 +528,24 @@ dataset = [X,Y]
 shape = np.shape(X)
 image_shape = (shape[1],shape[2],shape[3])
 #%%
+weights = {
+    'mse': 0.4,
+    'mae': 0.3,
+    'phase': 0.2,
+    'energy': 0.1
+}
+# Parámetros para la STFT en TensorFlow
+frame_length = nperseg  # Esto es equivalente a nperseg en SciPy
+frame_step = nperseg - noverlap  # Esto es equivalente a nperseg - noverlap en SciPy
+
 # define the models
 d_model = define_discriminator(image_shape)
 g_model = define_generator(image_shape)
 gan_model = define_gan(g_model, d_model, image_shape)
+
+# Definir los pesos según los porcentajes dados
+
+
 d_loss1_epoch = []
 d_loss2_epoch = []
 g_loss_epoch  = []
