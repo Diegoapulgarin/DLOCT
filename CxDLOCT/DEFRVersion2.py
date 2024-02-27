@@ -74,111 +74,71 @@ fringes = ifft(tom,axis=0)
 #%%
 tom2 = fft(fringes,axis=0)
 #%%
-
 # Calcular el número de puntos en el dominio k
 num_puntos_k = len(dispersion)
-
 # Crear un nuevo array k para el doble de puntos
 k_nuevo = np.linspace(-1, 1, 2 * num_puntos_k)
-
 # Interpolar la dispersión al nuevo dominio k
-dispersion_interpolada = np.interp(k_nuevo, np.linspace(-np.pi, np.pi, num_puntos_k), dispersion)
-
-
-
+dispersion_interpolada = np.interp(k_nuevo, np.linspace(-1, 1, num_puntos_k), dispersion)
 fftDispersion = fft(dispersion_interpolada)[0:int(len(dispersion_interpolada)/2)]
 n = len(fftDispersion)
-# full_spectrum = np.zeros(len(fringes), dtype=complex)
-# full_spectrum[0:n] = fftDispersion  # Ignoramos el primer elemento por ahora
-# phasedispersion_resampled = np.angle(full_spectrum)
 phasedispersion = np.angle(ifft(fftDispersion))
 unwrapped_phase = np.unwrap(phasedispersion)
-coeficientes = np.polyfit(np.arange(len(unwrapped_phase)), unwrapped_phase, 4)
+coeficientes = np.polyfit(np.arange(len(unwrapped_phase)), unwrapped_phase, 3)
 polinomio = np.poly1d(coeficientes)
 fase_lineal = polinomio(np.arange(len(unwrapped_phase)))
 dispersivePhase = unwrapped_phase - fase_lineal
-
-inverseFourierDispersive = fftshift(ifft(np.exp(-2j*dispersivePhase)))
-# plt.plot(abs(inverseFourierDispersive))
-# # Parámetros para el modelo de dispersión (ajustar según sea necesario)
-# B1 = 1.0  # Ejemplo de coeficiente para el modelo
-# C1 = 1.0e-14  # Ejemplo de coeficiente (asegúrate de que esté en las unidades correctas)
-# lambda_0 = 800e-9  # Longitud de onda central en metros
-
-# # Rango de números de onda k (inverso de la longitud de onda, asumiendo un espectro óptico)
-# k_min = 2 * np.pi / (lambda_0 + 100e-9)  # Número de onda mínimo
-# k_max = 2 * np.pi / (lambda_0 - 100e-9)  # Número de onda máximo
-# k = np.linspace(k_min, k_max, 2304)  # Vector de números de onda
-
-# # Conversión de número de onda a longitud de onda para usar en la ecuación de Sellmeier
-# lambda_k = 2 * np.pi / k
-# n_k = np.sqrt(1 + B1 * lambda_k**2 / (lambda_k**2 - C1))  # Índice de refracción
-# phi_k = (n_k - 1) * k  # Fase de dispersión, asumiendo una longitud de referencia
-newfringes = ifft(fft(fringes,axis=0),axis=0)
-dispersion_compensation = np.exp(-1j * dispersivePhase)
 negative_phase_correction = np.exp(-1j * dispersivePhase)[:, np.newaxis, np.newaxis]
-c1 = ifft(newfringes * negative_phase_correction, axis=0)
-c2 = ifft(newfringes, axis=0)
-#%%
-# Aplicar la función de fase negativa y realizar la IFFT para obtener c1(n)
-# negative_phase_correction = np.exp(-1j * dispersion)[:, np.newaxis, np.newaxis]
 c1 = ifft(fringes * negative_phase_correction, axis=0)
 c2 = ifft(fringes, axis=0)
-positive_phase_correction = np.exp(1j * dispersion)
-negative_phase_correction = np.exp(-1j * dispersion)
-double_negative_phase_correction = np.exp(-2j * dispersion)
+
+positive_phase_correction = np.exp(1j * dispersivePhase)
+negative_phase_correction = np.exp(-1j * dispersivePhase)
+double_negative_phase_correction = np.exp(-2j * dispersivePhase)
 p1p = ifft(positive_phase_correction)
 p1n = ifft(negative_phase_correction)
 p2 =  ifft(double_negative_phase_correction)
-
-#%%
 # plot(c1[500:1600,:,0]-c2[500:1600,:,0])
-M = 10  # Número máximo de iteraciones definido
+M = 4  # Número máximo de iteraciones definido por el paper
 i = 0  # Índice de iteración inicial
 # Variables para acumular los resultados
 d1 = np.zeros_like(c1)  # Inicializar d1
 d2 = np.zeros_like(c2)  # Inicializar d2
 # Asumimos que 'N' es el número de muestras en la dirección z
 N = c1.shape[0]
-
+# c2 = c2[0:N//2,:,:]
 while i < M:
+    print(i,end='\r')
     for x in range(c1.shape[1]):
         for y in range(c1.shape[2]):
             # Identificar los índices de los máximos
             n1_i = np.argmax(np.abs(c1[:, x, y]))
-            n2_i = np.argmax(np.abs(c2[:, x, y]))
-            
-            # Corrección pixel a pixel
-            for n in range(N):
-                # Compara los picos y actualiza los espectros y salidas
-                if np.abs(c1[n1_i, x, y]) > np.abs(c2[n2_i, x, y]):
-                    peak_value = c1[n1_i, x, y] - (c1[n1_i, x, y].conj() * p2[(n + n1_i) % N])
-                    d1[n, x, y] += c1[n1_i, x, y]  # Añadir el pico a d1[n]
-                    c1[n, x, y] -= peak_value  # Sustraer el pico corregido de c1[n]
-                    # Corrección de c2[n] dependiendo de la posición de n1_i
-                    if n1_i <= N//2:
-                        corrected_index = (n - n1_i) % N
-                        c2[n, x, y] -= peak_value * p1p[corrected_index]
-                    else:
-                        corrected_index = (n - n1_i + N) % N
-                        c2[n, x, y] -= peak_value.conj() * p1n[corrected_index]
+            n2_i = np.argmax(np.abs(c2[:, x, y]))          
+            # Compara los picos y actualiza los espectros y salidas
+            if np.abs(c1[n1_i, x, y]) > np.abs(c2[n2_i, x, y]):
+                peak_value = c1[n1_i, x, y] - (c1[n1_i, x, y].conj() * np.roll(p2,n1_i))
+                d1[:, x, y] += c1[n1_i, x, y]  # Añadir el pico a d1[n]
+                c1[:, x, y] -= peak_value  # Sustraer el pico corregido de c1[n]
+                # Corrección de c2[n] dependiendo de la posición de n1_i
+                if n1_i <= N//2:
+                    c2[:, x, y] -= c1[n1_i, x, y] * np.roll(p1p,- n1_i)
                 else:
-                    peak_value = c2[n2_i, x, y] - (c2[n2_i, x, y].conj() * p1n[(n + n2_i) % N])
-                    d2[n, x, y] += c2[n2_i, x, y]  # Añadir el pico a d2[n]
-                    c2[n, x, y] -= peak_value  # Sustraer el pico corregido de c2[n]
-                    # Aseguramos que el índice esté dentro de los límites del array p1p
-                    corrected_index = (n - n2_i + N) % N
-                    c1[n, x, y] -= peak_value.conj() * p1p[corrected_index]  # Corrección de c1[n]
-    
+                    corrected_index = (n - n1_i)
+                    c2[:, x, y] -= c1[n1_i, x, y].conj() * np.roll(p1n,n1_i)
+            else:
+                peak_value = c2[n2_i, x, y]* np.roll(p1n,- n2_i) - (c2[n2_i, x, y].conj() * np.roll(p1n, n2_i))
+                d2[:, x, y] += c2[n2_i, x, y]  # Añadir el pico a d2[n]
+                c2[:, x, y] -= c2[n2_i, x, y]  # Sustraer el pico corregido de c2[n]
+                # Aseguramos que el índice esté dentro de los límites del array p1p
+                corrected_index = (n - n2_i)
+                c1[:, x, y] -= peak_value  # Corrección de c1[n]   
     i += 1
     if i < M:
         continue  # Volver al paso 2 si no se ha alcanzado el número máximo de iteraciones
     else:
         d1 += c1  # Añadir el espectro restante de c1 a d1
-        d2 += c2  # Añadir el espectro restante de c2 a d2
+        d2 # Añadir el espectro restante de c2 a d2
         break  # Salir del bucle si se alcanza el número máximo de iteraciones
+plt.imshow(20*np.log10(abs(d1[:,:,0])),cmap='gray',vmax=25,vmin=0)
 
 #%%
-plot(c1[:,:,0])
-
-

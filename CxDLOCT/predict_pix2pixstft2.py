@@ -121,8 +121,8 @@ X[:,:,:,1] = np.imag(amp_normalized_tomograms*np.exp(1j*phase_tomograms))
 X = np.transpose(X,(2,0,1,3))
 
 #%%
-modelPath = r'C:\Users\USER\Documents\models\pix2pixstft'
-model = tf.keras.models.load_model(modelPath+'/model_245760.h5')
+modelPath = r'C:\Users\USER\Documents\models\pix2pixstft\pix2pix31'
+model = tf.keras.models.load_model(modelPath+'/model_110592.h5')
 stft_reconstructed = np.array(model.predict(X, batch_size=8), dtype='float32')
 y = stft_reconstructed[:,:,:,0] + 1j*stft_reconstructed[:,:,:,1]
 #%%
@@ -202,6 +202,6 @@ reconstructedimag = reconstruct_volume(phasey, fs, nperseg, noverlap, z_dim=2286
 
 
 fringes = fringescc[0:2286,:,4:6]
-fringescompose = np.real(fringes)*np.exp(-0.6j*reconstructedimag)
+fringescompose = np.real(fringes)*np.exp(-0.9j*reconstructedimag)
 tomreconstructed =(fft((fringescompose),axis=0))
-plt.imshow(20*np.log10(abs(tomreconstructed[:,:,0])),cmap='gray',vmax=120,vmin=70)
+plt.imshow(20*np.log10(abs(tomreconstructed[:,:,0])),cmap='gray',vmax=90,vmin=70)
