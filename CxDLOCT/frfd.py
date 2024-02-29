@@ -3,19 +3,13 @@ from scipy.signal import hilbert
 
 def frft(signal, alpha):
     """
-    Función de placeholder para la FRFT.
+    Placeholder para la función FRFT real. Debe reemplazarse con la implementación específica.
     """
     pass
 
 def calculate_gradient(signal, alpha, frft, delta=1e-5):
     """
     Calcula el gradiente de la función objetivo usando diferencias finitas.
-    
-    :param signal: La señal analítica de entrada.
-    :param alpha: El valor actual de alpha para el cual calcular el gradiente.
-    :param frft: La función FRFT.
-    :param delta: Un pequeño cambio en alpha para calcular la diferencia finita.
-    :return: El gradiente de la función objetivo.
     """
     frft_plus = frft(signal, alpha + delta)
     frft_minus = frft(signal, alpha - delta)
@@ -25,14 +19,6 @@ def calculate_gradient(signal, alpha, frft, delta=1e-5):
 def quasi_newton_method(signal, initial_alpha, frft, max_iterations=10, tol=1e-6, learning_rate=1e-2):
     """
     Método cuasi-Newton para optimizar el valor de alpha.
-    
-    :param signal: La señal analítica de entrada.
-    :param initial_alpha: Valor inicial de alpha.
-    :param frft: La función FRFT.
-    :param max_iterations: Número máximo de iteraciones.
-    :param tol: Tolerancia para la convergencia.
-    :param learning_rate: Tasa de aprendizaje para la actualización de alpha.
-    :return: El valor optimizado de alpha y la posición del pico correspondiente.
     """
     alpha = initial_alpha
     for _ in range(max_iterations):
@@ -42,54 +28,55 @@ def quasi_newton_method(signal, initial_alpha, frft, max_iterations=10, tol=1e-6
             break
         alpha = alpha_next
     
-    # Calcular el espectro de potencia y encontrar el pico para el alpha optimizado
     frft_result = frft(signal, alpha)
     power_spectrum = np.abs(frft_result)**2
     peak_position = np.argmax(power_spectrum)
     return alpha, peak_position
 
-# Integra esta función en el código principal donde se lleva a cabo la búsqueda fina
 
+def apply_phase_correction(signal, alpha, omega_0):
+    """
+    Aplica la corrección de fase a la señal utilizando el coeficiente de ajuste derivado de alpha.
+    
+    :param signal: La señal a corregir.
+    :param alpha: El valor de alpha obtenido de la optimización.
+    :param omega_0: La frecuencia central de la señal.
+    :return: La señal corregida.
+    """
+    k_n = np.pi * np.cot(alpha)
+    corrected_phase = -k_n * (np.arange(len(signal)) - omega_0) ** 2
+    return signal * np.exp(1j * corrected_phase)
 
-def apply_dispersion_correction(oct_volume, frft, alpha_step=0.5, max_iterations=10, tol=1e-6):
+def apply_dispersion_correction(oct_volume, frft, omega_0, alpha_step=0.5, max_iterations=10, tol=1e-6):
     """
     Aplica corrección de dispersión usando FRFT en un volumen OCT 3D.
-    
-    Parámetros:
-    oct_volume: Array 3D de OCT con dimensiones (z, x, y).
-    frft: Función de FRFT que se aplica a un array 1D.
-    alpha_step: Incremento de paso para la iteración de alfa en la búsqueda gruesa.
-    max_iterations: Número máximo de iteraciones para la búsqueda fina.
-    tol: Tolerancia para el criterio de parada en la búsqueda fina.
     """
-    corrected_volume = np.zeros_like(oct_volume)
+    # corrected_volume = np.zeros_like(oct_volume, dtype=np.complex)
     
     # Rango de alfas para la búsqueda gruesa
     alphas = np.arange(0, 2 + alpha_step, alpha_step)
-    
+
     for y in range(oct_volume.shape[2]):
         for x in range(oct_volume.shape[1]):
             aline = oct_volume[:, x, y]
             sa = aline + 1j * hilbert(aline)  # Construcción de la señal analítica
             
-            # Búsqueda Gruesa
+            # Búsqueda Gruesa para encontrar alpha_co
             max_peak = 0
-            alpha_co = 0
+            alpha_co = 0  # Corrección: Definir alpha_co antes de la búsqueda
             for alpha in alphas:
                 frft_result = frft(sa, alpha)
-                power_spectrum = np.abs(frft_result) ** 2
+                power_spectrum = np.abs(frft_result)**2
                 max_power = np.max(power_spectrum)
                 if max_power > max_peak:
                     max_peak = max_power
-                    alpha_co = alpha
-                    u_co = np.argmax(power_spectrum)
+                    alpha_co = alpha  # Actualizar alpha_co correctamente
             
-            # Búsqueda Fina - Esquematización (requiere implementación detallada)
-            alpha_n, max_power, u_n = quasi_newton_method(sa, alpha_co, frft, max_iterations, tol)
-            
-            # A partir de aquí, se implementaría la corrección de dispersión utilizando alpha_n y u_n
-            
-    return corrected_volume
+            # Búsqueda Fina para optimizar alpha
+            alpha_n, _ = quasi_newton_method(sa, alpha_co, frft, max_iterations, tol)  # Ajuste: No necesitamos u_n aquí
 
+            # Corrección de Dispersión
+            corrected_signal = apply_phase_correction(sa, alpha_n, omega_0)
 
-# Nota: Este esquema requiere completar la función quasi_newton_method con la lógica específica de optimización.
+    return np.abs(corrected_signal)  # Devuelve la magnitud de la señal corregida
+
