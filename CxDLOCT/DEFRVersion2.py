@@ -71,7 +71,7 @@ for imag_file, real_file in zip(artifact_files[::2], artifact_files[1::2]):
         tom = tomReal + 1j * tomImag
         del tomImag, tomReal
 fringes = ifft(tom,axis=0)
-#%%
+
 tom2 = fft(fringes,axis=0)
 #%%
 # Calcular el número de puntos en el dominio k
@@ -84,7 +84,7 @@ fftDispersion = fft(dispersion_interpolada)[0:int(len(dispersion_interpolada)/2)
 n = len(fftDispersion)
 phasedispersion = np.angle(ifft(fftDispersion))
 unwrapped_phase = np.unwrap(phasedispersion)
-coeficientes = np.polyfit(np.arange(len(unwrapped_phase)), unwrapped_phase, 3)
+coeficientes = np.polyfit(np.arange(len(unwrapped_phase)), unwrapped_phase, 15)
 polinomio = np.poly1d(coeficientes)
 fase_lineal = polinomio(np.arange(len(unwrapped_phase)))
 dispersivePhase = unwrapped_phase - fase_lineal
@@ -99,7 +99,7 @@ p1p = ifft(positive_phase_correction)
 p1n = ifft(negative_phase_correction)
 p2 =  ifft(double_negative_phase_correction)
 # plot(c1[500:1600,:,0]-c2[500:1600,:,0])
-M = 4  # Número máximo de iteraciones definido por el paper
+M = 10  # Número máximo de iteraciones definido por el paper
 i = 0  # Índice de iteración inicial
 # Variables para acumular los resultados
 d1 = np.zeros_like(c1)  # Inicializar d1

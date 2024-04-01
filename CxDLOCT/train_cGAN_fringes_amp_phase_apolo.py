@@ -1,7 +1,7 @@
 #%% import libraries
 import numpy as np
 import os
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt 
 from numpy.fft import fft, fftshift, ifft
 from scipy.signal import hilbert
 
@@ -13,9 +13,9 @@ from numpy import zeros
 from numpy import ones
 from numpy.random import randint
 
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.optimizers import RMSprop
-from tensorflow.keras.optimizers import SGD
+from keras.optimizers import Adam
+from keras.optimizers import RMSprop
+from keras.optimizers import SGD
 from keras.initializers import RandomNormal
 from keras.models import Model
 from keras import Input
