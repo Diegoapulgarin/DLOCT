@@ -31,9 +31,9 @@ phase2 = np.pi/8  # Desfase para crear interferencia
 # Generación de señales coseno con dos frecuencias distintas
 srv1 = A1*np.cos(w1*t+phase1)
 srv2 = A2*np.cos(w2*t+phase2)
-srv = srv1 + srv2  # Señal combinada
+srv = srv1 + srv2  # Señal combinada valores reales
 
-# Señal compleja con dos frecuencias distintas
+# Señal compleja con dos frecuencias distintas valores complejos 
 scv = A1*np.exp(1j*(w1*t+phase1)) + A2*np.exp(1j*(w2*t+phase2))
 
 # Parámetros de la modulación
@@ -130,77 +130,74 @@ plt.imshow(abs(frftarray),cmap='viridis')
 #        zticklabels=[])
 
 # plt.show()
-#%%
-def fast_reconstruct(array):
-    tom = fftshift(fft(fftshift(array,axes=0),axis=0),axes=0)
-    return tom
+#%%  datos experimentales dejar de lado de momento
+# def fast_reconstruct(array):
+#     tom = fftshift(fft(fftshift(array,axes=0),axis=0),axes=0)
+#     return tom
  
-def extract_dimensions(file_name):
-    parts = file_name.split('_')
-    dimensions = []
-    for part in parts:
-        if 'z=' in part or 'x=' in part or 'y=' in part:
-            number = int(part.split('=')[-1])
-            dimensions.append(number)
-    return tuple(dimensions)
+# def extract_dimensions(file_name):
+#     parts = file_name.split('_')
+#     dimensions = []
+#     for part in parts:
+#         if 'z=' in part or 'x=' in part or 'y=' in part:
+#             number = int(part.split('=')[-1])
+#             dimensions.append(number)
+#     return tuple(dimensions)
 
-def read_tomogram(file_path, dimensions):
-    depth, height, width = dimensions
-    with open(file_path, 'rb') as file:
-        tomogram = np.fromfile(file, dtype='single')
-        tomogram = tomogram.reshape((depth, height, width),order='F')
-    return tomogram
+# def read_tomogram(file_path, dimensions):
+#     depth, height, width = dimensions
+#     with open(file_path, 'rb') as file:
+#         tomogram = np.fromfile(file, dtype='single')
+#         tomogram = tomogram.reshape((depth, height, width),order='F')
+#     return tomogram
 
-
-path = r'C:\Users\USER\OneDrive - Universidad EAFIT\Eafit\Trabajo de grado\Data Boston\[DepthWrap]\[p.DepthWrap][s.Fovea][09-20-2023_11-15-34]'
-file = '[p.Calibration][s.Mirror][02-10-2023_15-17-52].dispersion'
-dispersion = np.fromfile(os.path.join(path,file))
-# plt.plot(dispersion)
-path = r'C:\Users\USER\Documents\GitHub\[s.fovea]11bscan'
-artifact_files = os.listdir(path)
-for imag_file, real_file in zip(artifact_files[::2], artifact_files[1::2]):
-        real_file_path = os.path.join(path, real_file)
-        imag_file_path = os.path.join(path, imag_file)
-        dimensions = extract_dimensions(real_file[:-4])
-        tomReal = read_tomogram(real_file_path, dimensions)
-        tomImag = read_tomogram(imag_file_path, dimensions)
-        tom = tomReal + 1j * tomImag
-        del tomImag, tomReal
-fringescc = fftshift(ifft(tom,axis=0),axes=0)
-fringescc = fringescc[:,:,0:4]
-
-pathtarget = r'C:\Users\USER\Documents\GitHub\[s.fovea]11bscanNoartifacts'
-artifact_files = os.listdir(pathtarget)
-for imag_file, real_file in zip(artifact_files[::2], artifact_files[1::2]):
-        real_file_path = os.path.join(pathtarget, real_file)
-        imag_file_path = os.path.join(pathtarget, imag_file)
-        dimensions = extract_dimensions(real_file[:-4])
-        tomReal = read_tomogram(real_file_path, dimensions)
-        tomImag = read_tomogram(imag_file_path, dimensions)
-        tom = tomReal + 1j * tomImag
-        del tomImag, tomReal
-fringesreal = fftshift(ifft(tom,axis=0),axes=0)
-fringesreal = fringesreal[:,:,0:4]
-# plt.imshow(20*np.log10(abs(tom[:,:,0])),cmap='gray')
-#%%
-nSnapshots = fs
-alpha = np.linspace( 0., 2.,nSnapshots)
-obj_1d_shifted_gpu = torch.from_numpy(fringescc[:,512,0]).cuda()
-results = []
-gputime = []
-for al in tqdm( alpha, total=alpha.size ):
-    start = time.time()
-    fobj_1d = frft_g.frft( obj_1d_shifted_gpu, al )
-    results.append( fftshift(torch.Tensor.numpy(torch.Tensor.cpu(fobj_1d))))
-    t_gpu = time.time() - start
-    gputime.append( t_gpu*1.e6 )
-print( 'Mean GPU time = %f μs'%mean(gputime))
-
-z = 1700
-frftarray = np.array(results)
-phasefrft = np.angle(frftarray)
-fig,ax = plt.subplots(4,1)
-ax[0].plot(abs(tom[:,512,0]))
-ax[1].plot(abs(fftshift(frftarray[n,:])))
-ax[2].plot(abs(fftshift(frftarray[:,z])))
-ax[3].plot(abs(np.unwrap(phasefrft[n,:])))
+# path = r'C:\Users\USER\OneDrive - Universidad EAFIT\Eafit\Trabajo de grado\Data Boston\[DepthWrap]\[p.DepthWrap][s.Fovea][09-20-2023_11-15-34]'
+# file = '[p.Calibration][s.Mirror][02-10-2023_15-17-52].dispersion'
+# dispersion = np.fromfile(os.path.join(path,file))
+# # plt.plot(dispersion)
+# path = r'C:\Users\USER\Documents\GitHub\[s.fovea]11bscan'
+# artifact_files = os.listdir(path)
+# for imag_file, real_file in zip(artifact_files[::2], artifact_files[1::2]):
+#         real_file_path = os.path.join(path, real_file)
+#         imag_file_path = os.path.join(path, imag_file)
+#         dimensions = extract_dimensions(real_file[:-4])
+#         tomReal = read_tomogram(real_file_path, dimensions)
+#         tomImag = read_tomogram(imag_file_path, dimensions)
+#         tom = tomReal + 1j * tomImag
+#         del tomImag, tomReal
+# fringescc = fftshift(ifft(tom,axis=0),axes=0)
+# fringescc = fringescc[:,:,0:4]
+# pathtarget = r'C:\Users\USER\Documents\GitHub\[s.fovea]11bscanNoartifacts'
+# artifact_files = os.listdir(pathtarget)
+# for imag_file, real_file in zip(artifact_files[::2], artifact_files[1::2]):
+#         real_file_path = os.path.join(pathtarget, real_file)
+#         imag_file_path = os.path.join(pathtarget, imag_file)
+#         dimensions = extract_dimensions(real_file[:-4])
+#         tomReal = read_tomogram(real_file_path, dimensions)
+#         tomImag = read_tomogram(imag_file_path, dimensions)
+#         tom = tomReal + 1j * tomImag
+#         del tomImag, tomReal
+# fringesreal = fftshift(ifft(tom,axis=0),axes=0)
+# fringesreal = fringesreal[:,:,0:4]
+# # plt.imshow(20*np.log10(abs(tom[:,:,0])),cmap='gray')
+# #%%
+# nSnapshots = fs
+# alpha = np.linspace( 0., 2.,nSnapshots)
+# obj_1d_shifted_gpu = torch.from_numpy(fringescc[:,512,0]).cuda()
+# results = []
+# gputime = []
+# for al in tqdm( alpha, total=alpha.size ):
+#     start = time.time()
+#     fobj_1d = frft_g.frft( obj_1d_shifted_gpu, al )
+#     results.append( fftshift(torch.Tensor.numpy(torch.Tensor.cpu(fobj_1d))))
+#     t_gpu = time.time() - start
+#     gputime.append( t_gpu*1.e6 )
+# print( 'Mean GPU time = %f μs'%mean(gputime))
+# z = 1700
+# frftarray = np.array(results)
+# phasefrft = np.angle(frftarray)
+# fig,ax = plt.subplots(4,1)
+# ax[0].plot(abs(tom[:,512,0]))
+# ax[1].plot(abs(fftshift(frftarray[n,:])))
+# ax[2].plot(abs(fftshift(frftarray[:,z])))
+# ax[3].plot(abs(np.unwrap(phasefrft[n,:])))
