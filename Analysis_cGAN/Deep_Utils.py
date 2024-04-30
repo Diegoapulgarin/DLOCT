@@ -260,12 +260,7 @@ def calculate_ssim(image1, image2):
     Devuelve:
     - SSIM entre las dos imágenes.
     """
-    # Asegúrate de que las imágenes tengan el mismo tamaño y tipo de dato
     assert image1.shape == image2.shape, "Las imágenes deben tener el mismo tamaño."
-    
-    # El SSIM se calcula típicamente en imágenes de 8 bits (0-255)
-    # Si tus imágenes no están en este rango, podrías considerar normalizarlas o adaptar el rango
-    # Por simplicidad, aquí supondré que están en el rango [0, 1] (por ejemplo, tras una normalización)
     ssim_value, _ = ssim(image1, image2, full=True,data_range=1)
     return ssim_value
 
