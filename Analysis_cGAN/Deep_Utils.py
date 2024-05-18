@@ -7,7 +7,10 @@ import tifffile as tiff
 import plotly.express as px
 from skimage.metrics import structural_similarity as ssim
 import matplotlib.pyplot as plt
-
+import cv2
+import scipy
+from skimage.restoration import denoise_nl_means, estimate_sigma
+from tqdm import tqdm
 
 def tiff_3Dsave(array, filename):
     tiff.imwrite(filename, array)
@@ -348,3 +351,140 @@ def save_image(array,cmap='gray',file_name='file',ext='png',dpi = 300,vmin=85,vm
     # Guarda la imagen
     plt.savefig(path + '\\'+ file_name + '.' + ext, bbox_inches='tight', pad_inches=0, dpi=300)
     plt.close()
+
+def sharpness(a):
+    b = scipy.ndimage.gaussian_laplace(a,sigma=3)
+    c = (b-np.min(b))/(np.max(b)-np.min(b))
+    sharpnessValue = c.sum()
+    return sharpnessValue
+def non_local_means_despeckling_3d(volume, h=None, search_window_size=21, block_size=5):
+    if h is None:
+        # If 'h' is not provided, estimate it from the input volume
+        sigma_estimated = estimate_sigma(volume, average_sigmas=True)
+        h = 0.8 * sigma_estimated
+        
+    # Apply the 3D Non-local Means filter
+    despeckled_volume = denoise_nl_means(volume, h=h, fast_mode=True, patch_size=block_size, patch_distance=search_window_size)
+
+    return despeckled_volume
+
+def dbscale(darray):
+    if len(np.shape(darray))==3:
+        img = 10*np.log10(abs(darray[:,:,0]+1j*darray[:,:,1])**2)
+    else:
+        img = 10*np.log10(abs(darray[:,:])**2)
+    return img
+
+def apply_edge_filter(image_array):
+    # Convertir la imagen a escala de grises si no lo está
+    if len(image_array.shape) == 3 and image_array.shape[2] == 3:  # Si es una imagen en color (BGR)
+        image_array = cv2.cvtColor(image_array, cv2.COLOR_BGR2GRAY)
+    
+    # Asegurarse de que la imagen sea de tipo uint8
+    if image_array.dtype != 'uint8':
+        image_array = cv2.convertScaleAbs(image_array)
+
+    # Aplicar el filtro de contornos
+    edges = cv2.Canny(image_array, 0, 10)
+    return edges
+
+def apply_sobel_filter(image_array):
+    # Convertir la imagen a escala de grises si no lo está
+    if len(image_array.shape) == 3 and image_array.shape[2] == 3:  # Si es una imagen en color (BGR)
+        image_array = cv2.cvtColor(image_array, cv2.COLOR_BGR2GRAY)
+    
+    # Aplicar el filtro de Sobel en la dirección x y y
+    sobelx = cv2.Sobel(image_array, cv2.CV_64F, 1, 0, ksize=5)
+    sobely = cv2.Sobel(image_array, cv2.CV_64F, 0, 1, ksize=5)
+
+    # Calcular la magnitud del gradiente
+    magnitude = np.sqrt(sobelx**2 + sobely**2)
+    
+    # Convertir la magnitud a tipo uint8 para visualización
+    sobel_edges = cv2.convertScaleAbs(magnitude)
+    
+    return sobel_edges
+
+def apply_laplacian_filter(image_array):
+    # Convertir la imagen a escala de grises si no lo está
+    if len(image_array.shape) == 3 and image_array.shape[2] == 3:  # Si es una imagen en color (BGR)
+        image_array = cv2.cvtColor(image_array, cv2.COLOR_BGR2GRAY)
+    
+    # Asegurarse de que la imagen sea de tipo uint8
+    if image_array.dtype != 'uint8':
+        image_array = cv2.convertScaleAbs(image_array)
+
+    # Aplicar el filtro Laplaciano
+    laplacian = cv2.Laplacian(image_array, cv2.CV_64F)
+    
+    # Convertir el resultado a tipo uint8 para visualización
+    laplacian_edges = cv2.convertScaleAbs(laplacian)
+    
+    return laplacian_edges
+
+def combine_sobel_laplacian(image_array):
+    sobel_edges = apply_sobel_filter(image_array)
+    laplacian_edges = apply_laplacian_filter(image_array)
+    
+    # Combinar los resultados usando una operación de bitwise OR
+    combined_edges = cv2.bitwise_or(sobel_edges, laplacian_edges)
+    
+    return combined_edges
+
+def apply_scharr_filter(image_array):
+    # Convertir la imagen a escala de grises si no lo está
+    if len(image_array.shape) == 3 and image_array.shape[2] == 3:
+        image_array = cv2.cvtColor(image_array, cv2.COLOR_BGR2GRAY)
+    
+    # Asegurarse de que la imagen sea de tipo uint8
+    if image_array.dtype != 'uint8':
+        image_array = cv2.convertScaleAbs(image_array)
+
+    # Aplicar el filtro de Scharr en la dirección x y y
+    scharrx = cv2.Scharr(image_array, cv2.CV_64F, 1, 0)
+    scharry = cv2.Scharr(image_array, cv2.CV_64F, 0, 1)
+
+    # Calcular la magnitud del gradiente
+    magnitude = np.sqrt(scharrx**2 + scharry**2)
+    
+    # Convertir la magnitud a tipo uint8 para visualización
+    scharr_edges = cv2.convertScaleAbs(magnitude)
+    
+    return scharr_edges
+def apply_gaussian_scharr_filter(image_array):
+    # Convertir la imagen a escala de grises si no lo está
+    if len(image_array.shape) == 3 and image_array.shape[2] == 3:
+        image_array = cv2.cvtColor(image_array, cv2.COLOR_BGR2GRAY)
+    
+    # Asegurarse de que la imagen sea de tipo uint8
+    if image_array.dtype != 'uint8':
+        image_array = cv2.convertScaleAbs(image_array)
+    
+    # Aplicar el filtro Gaussiano para eliminar el ruido
+    blurred_image = cv2.GaussianBlur(image_array, (5, 5), 0)
+    
+    # Aplicar el filtro de Scharr en la dirección x y y
+    scharrx = cv2.Scharr(blurred_image, cv2.CV_64F, 1, 0)
+    scharry = cv2.Scharr(blurred_image, cv2.CV_64F, 0, 1)
+
+    # Calcular la magnitud del gradiente
+    magnitude = np.sqrt(scharrx**2 + scharry**2)
+    
+    # Convertir la magnitud a tipo uint8 para visualización
+    scharr_edges = cv2.convertScaleAbs(magnitude)
+    
+    return scharr_edges
+
+def apply_gaussian_filter(image_array):
+    # Convertir la imagen a escala de grises si no lo está
+    if len(image_array.shape) == 3 and image_array.shape[2] == 3:
+        image_array = cv2.cvtColor(image_array, cv2.COLOR_BGR2GRAY)
+    
+    # Asegurarse de que la imagen sea de tipo uint8
+    if image_array.dtype != 'uint8':
+        image_array = cv2.convertScaleAbs(image_array)
+    
+    # Aplicar el filtro Gaussiano para eliminar el ruido
+    blurred_image = cv2.GaussianBlur(image_array, (9, 9), 0)
+    
+    return blurred_image
