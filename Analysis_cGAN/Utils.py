@@ -13,6 +13,8 @@ import plotly.express as px
 import matplotlib.pyplot as plt
 import matplotlib
 
+import cv2
+
 
 
 def LoadData(rootFolder, slidingXSize,
@@ -114,6 +116,25 @@ def downSampleSlices(slices):
     slicesUnder[:, ::2, :, :] = 0  # this has the fields to input the model
     
     return slicesUnder
+
+def downSampleSlicesInterp(slices):
+    # slicesUnder = np.copy(slices)
+    # slicesUnder[:, ::2, :, :] = 0  # this has the fields to input the model
+    slicesUnder = slices[:,:,1::2,:]
+    i = np.shape(slices)[0]
+    x = np.shape(slices)[1]
+    y = np.shape(slices)[2]
+    ch = np.shape(slices)[3]
+    slicesUnderF = np.zeros((i,x,y,ch))
+    for z in range(np.shape(slicesUnder)[0]):
+        slicesUnderF[z,:,:,0] = cv2.resize(slicesUnder[z,:,:,0],
+                    dsize=(int(np.shape(slicesUnder)[2]*2),np.shape(slicesUnder)[1]),
+                    interpolation=cv2.INTER_LINEAR)
+        slicesUnderF[z,:,:,1] = cv2.resize(slicesUnder[z,:,:,1],
+                    dsize=(int(np.shape(slicesUnder)[2]*2),np.shape(slicesUnder)[1]),
+                    interpolation=cv2.INTER_LINEAR)
+    return slicesUnderF
+
 
 def ownPlot(tomSlice, givenTitle=None, logDisplay=False):
 

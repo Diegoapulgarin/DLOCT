@@ -4,8 +4,8 @@ sys.path.append(r'C:\Users\USER\Documents\GitHub\DLOCT\cGAN_subsampling\Function
 import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
-from Deep_Utils import simple_sliding_window,dbscale,Correlation,simple_inv_sliding_window
-from Utils import logScaleSlices, inverseLogScaleSlices, downSampleSlices
+from Deep_Utils import simple_sliding_window,simple_inv_sliding_window,dbscale,Correlation
+from Utils import logScaleSlices, inverseLogScaleSlices, downSampleSlices, downSampleSlicesInterp
 from Metrics import ownPhaseMetricCorrected_numpy, ssimMetric, ownPhaseMetric_numpy
 import os
 import gc
@@ -21,7 +21,7 @@ if gpus:
 
 #%%
 
-root=r'E:\DLOCT\ultimo experimento subsampling paper\Fovea\cGAN_sin_exp'
+root=r'E:\DLOCT\ultimo experimento subsampling paper\Fovea\cGAN_exp'
 model_folder = '\\Models'
 path = root+model_folder
 savefolder = path
@@ -38,6 +38,7 @@ tomimag = np.reshape(tomimag,(586,896,960,2),order='F')
 tomimag = np.sum(tomimag,axis=3)
 tomDatas = np.stack((tomreal,tomimag), axis=3)
 del tomimag, tomreal
+print('Tomogram loaded')
 #%%
 q=3
 zini = 170
@@ -45,7 +46,7 @@ zfin = zini + q
 tomDatas= tomDatas[zini:zfin,:,:,:]
 num_zeros = 64
 pad_width = ((0, 0), (0, 0), (0, num_zeros), (0, 0))
-tomDatas = np.pad(tomDatas, pad_width, mode='edge')
+tomDatas = np.pad(tomDatas, pad_width, mode='reflect')
 print(np.shape(tomDatas))
 #%%
 slidingYSize = 128
@@ -61,13 +62,19 @@ logslicesUnder = downSampleSlices(logslices)
 #%%
 models = os.listdir(path)
 metrics = []
+metricsFullsize = []
 for i in models:
     print('__________ reading___________',i)
     model = tf.keras.models.load_model(path+'\\'+ i,compile=False)
     print('model loaded')
     logslicesOver = np.array(model.predict(logslicesUnder, batch_size=8), dtype='float64')
-    slicesOver = inverseLogScaleSlices(logslicesOver, slicesMax, slicesMin)
-    slicesUnder=downSampleSlices(slices)
+    # slicesOver = inverseLogScaleSlices(logslicesOver, slicesMax, slicesMin)
+    # tomOver = simple_inv_sliding_window(slicesOver,
+    #                                     tomShape,
+    #                                     slidingYSize,
+    #                                     slidingXSize,
+    #                                     strideY,
+    #                                     strideX)
     print('metrics evaluation')
     ssims = np.mean(ssimMetric(logslices, logslicesOver))
     ssims_std = np.std(ssimMetric(logslices, logslicesOver))
@@ -79,12 +86,23 @@ for i in models:
     mse_uncertainty = mse_std / np.sqrt(np.prod(np.shape(mse)))
     epoch_metrics = np.array((ssims,ssims_std,ssims_uncertainty,phasemetric,phasemetricCorrected,mse,mse_std,mse_uncertainty))
     metrics.append(epoch_metrics)
+
+    # ssims = np.mean(ssimMetric(tomDatas, tomOver))
+    # ssims_std = np.std(ssimMetric(tomDatas, tomOver))
+    # ssims_uncertainty = ssims_std / np.sqrt(len(tomDatas))
+    # phasemetric = np.mean(ownPhaseMetric_numpy(tomDatas, tomOver))
+    # phasemetricCorrected = np.mean(ownPhaseMetricCorrected_numpy(tomDatas, tomOver))
+    # mse = np.mean((tomDatas - tomOver)**2)
+    # mse_std = np.std((tomDatas - tomOver)**2)
+    # mse_uncertainty = mse_std / np.sqrt(np.prod(np.shape(mse)))
+    # epoch_metrics = np.array((ssims,ssims_std,ssims_uncertainty,phasemetric,phasemetricCorrected,mse,mse_std,mse_uncertainty))
+    # metricsFullsize.append(epoch_metrics)
     del model
     gc.collect()
     K.clear_session()
+#%%
 metrics_log = np.array(metrics)
 np.save(root+'\\metrics_log',metrics_log)
-#%%
 ssims = metrics_log[:,0]
 phasemetric = metrics_log[:,1]
 phasemetricCorrected = metrics_log[:,2]
@@ -98,7 +116,7 @@ axs[1,0].plot(phasemetricCorrected)
 axs[1,0].set_title('phase corrected')
 axs[1,1].plot(phasemetric)
 axs[1,1].set_title('phase')
-#%%
+
 def max_value(array):
     max_val = array[0]  # initialize maximum value as the first element of the array
     max_pos = 0         # initialize maximum position as 0
@@ -141,7 +159,9 @@ print(f"The maximum value of the phase metric corrected is {max_val} and its pos
 min_val, min_pos = min_value(phasemetricCorrected)
 print(f"The minimum value of the phase metric corrected is {min_val} and its position is {min_pos}.")
 #%%
-best = 11
+# max_val, max_pos = max_value(ssims)
+# best = max_pos
+best = 90
 model = tf.keras.models.load_model(path+'\\'+ models[best],compile=False)
 logslicesOver = np.array(model.predict(logslicesUnder, batch_size=8), dtype='float64')
 slicesOver = inverseLogScaleSlices(logslicesOver, slicesMax, slicesMin)
@@ -163,6 +183,8 @@ plt.xticks([])
 plt.yticks([])  
 plt.show()
 #%%
+
+
 
 enfaceReconstructed = tomOver[z,:,:,:]
 correlationReconstructedx,correlationReconstructedy = Correlation(enfaceReconstructed)
@@ -191,4 +213,4 @@ plt.title('Original correlation')
 plt.xticks([])  
 plt.yticks([])  
 plt.show()
-
+# %%

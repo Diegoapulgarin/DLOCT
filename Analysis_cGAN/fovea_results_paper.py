@@ -53,7 +53,6 @@ tomi = np.sum(tomi,axis=3)
 tomSubsampled = np.stack((tom, tomi), axis=3)
 del tom, tomi
 print('subsampled loaded')
-#%%
 tomSubsampledInterp = np.zeros((nZbin,nXbin,nYbin,2))
 for z in tqdm(range(np.shape(tomSubsampled)[0])):
     tomSubsampledInterp[z,:,:,0] = cv2.resize(tomSubsampled[z,:,:,0],
@@ -103,7 +102,6 @@ figname = f'comparision x={x}.png'
 if savefig:
     plt.savefig(os.path.join(path,folder,subfolder,figname), dpi=300)
     print('fig saved')
- 
 plt.show()
 
 plot1 = dbscale(tomReconstructed[z,:,:,:])
@@ -137,7 +135,6 @@ figname = f'comparision z={z}.png'
 if savefig:
     plt.savefig(os.path.join(path,folder,subfolder,figname), dpi=300)
     print('fig saved')
- 
 plt.show()
 
 
@@ -159,10 +156,55 @@ xintsub = xint
 xfinsub = xfin
 yintsub = int(yint/2)
 yfinsub = int(yfin/2)
-miniplot1 = aFiltered[xint:xfin,yint:yfin]
-miniplot2 = bFiltered[xint:xfin,yint:yfin]
-miniplot3 = cFiltered[xintsub:xfinsub,yintsub:yfinsub]
-miniplot4 = dFiltered[xint:xfin,yint:yfin]
+miniplot1 = plot1[xint:xfin,yint:yfin]
+miniplot2 = plot2[xint:xfin,yint:yfin]
+miniplot3 = plot3[xintsub:xfinsub,yintsub:yfinsub]
+miniplot4 = plot4[xint:xfin,yint:yfin]
+ash = np.round(sharpness(miniplot1),decimals=2)
+bsh = np.round(sharpness(miniplot2),decimals=2)
+csh = np.round(sharpness(miniplot3),decimals=2)
+dsh = np.round(sharpness(miniplot4),decimals=2)
+fig, axs = plt.subplots(1, 4, figsize=(40, 5))
+cmap= plt.cm.gray
+norm = cmnorm(vmin=vmin, vmax=vmax)
+sm = ScalarMappable(cmap=cmap, norm=norm) 
+axs[0].imshow(miniplot2, cmap='gray',vmin=vmin,vmax=vmax,aspect='auto')
+axs[0].axis('off')
+# axs[0].set_title(f'Original sharpness= {np.int32(bsh)}')
+
+axs[1].imshow(miniplot1, cmap='gray',vmin=vmin,vmax=vmax,aspect='auto')
+axs[1].axis('off') 
+# axs[1].set_title(f'cGAN reconstructed sharpness= {np.int32(ash)}')
+
+axs[2].imshow(miniplot4, cmap='gray',vmin=vmin,vmax=vmax,aspect='auto')
+axs[2].axis('off')
+# axs[2].set_title(f'Subsampled interpolated sharpeness= {np.int32(dsh)}')
+
+axs[3].imshow(miniplot3, cmap='gray',vmin=vmin,vmax=vmax,aspect='auto')
+axs[3].axis('off')
+# axs[3].set_title(f'Subsampled sharpeness= {np.int32(csh)}')
+plt.subplots_adjust(wspace=0.01, hspace=0)
+
+figname = f'comparision filtered z={z}_xint{xint}_xfin{xfin}_yint{yint}_yfin{yfin}.png'
+# cbar = fig.colorbar(sm, aspect=10, orientation='vertical', ax=axs[3], label='dB')  
+if savefig:
+    plt.savefig(os.path.join(path,folder,subfolder,figname), dpi=300)
+    print('fig saved')
+plt.show()
+#%%
+
+xint = 83
+xfin = 183
+yint = 300
+yfin = 550
+xintsub = xint
+xfinsub = xfin
+yintsub = int(yint/2)
+yfinsub = int(yfin/2)
+miniplot1 = plot1[xint:xfin,yint:yfin]
+miniplot2 = plot2[xint:xfin,yint:yfin]
+miniplot3 = plot3[xintsub:xfinsub,yintsub:yfinsub]
+miniplot4 = plot4[xint:xfin,yint:yfin]
 ash = np.round(sharpness(miniplot1),decimals=2)
 bsh = np.round(sharpness(miniplot2),decimals=2)
 csh = np.round(sharpness(miniplot3),decimals=2)
@@ -195,6 +237,107 @@ if savefig:
     print('fig saved')
 plt.show()
 
+x2 = 135
+plot1x = dbscale(tomReconstructed[:,x2,:,:])
+plot2x = dbscale(tomOriginal[:,x2,:,:])
+plot3x = dbscale(tomSubsampled[:,x2,:,:])
+plot4x = dbscale(tomSubsampledInterp[:,x2,:,:])
+xint = 120
+xfin = 230
+yint = 300
+yfin = 550
+xintsub = xint
+xfinsub = xfin
+yintsub = int(yint/2)
+yfinsub = int(yfin/2)
+miniplot1 = plot1x[xint:xfin,yint:yfin]
+miniplot2 = plot2x[xint:xfin,yint:yfin]
+miniplot3 = plot3x[xintsub:xfinsub,yintsub:yfinsub]
+miniplot4 = plot4x[xint:xfin,yint:yfin]
+ash = np.round(sharpness(miniplot1),decimals=2)
+bsh = np.round(sharpness(miniplot2),decimals=2)
+csh = np.round(sharpness(miniplot3),decimals=2)
+dsh = np.round(sharpness(miniplot4),decimals=2)
+fig, axs = plt.subplots(1, 4, figsize=(40, 5))
+cmap= plt.cm.gray
+norm = cmnorm(vmin=vmin, vmax=vmax)
+sm = ScalarMappable(cmap=cmap, norm=norm) 
+axs[0].imshow(miniplot2, cmap='gray',vmin=vmin,vmax=vmax,aspect='auto')
+axs[0].axis('off')
+# axs[0].set_title(f'Original sharpness= {np.int32(bsh)}')
+
+axs[1].imshow(miniplot1, cmap='gray',vmin=vmin,vmax=vmax,aspect='auto')
+axs[1].axis('off') 
+# axs[1].set_title(f'cGAN reconstructed sharpness= {np.int32(ash)}')
+
+axs[2].imshow(miniplot4, cmap='gray',vmin=vmin,vmax=vmax,aspect='auto')
+axs[2].axis('off')
+# axs[2].set_title(f'Subsampled interpolated sharpeness= {np.int32(dsh)}')
+
+axs[3].imshow(miniplot3, cmap='gray',vmin=vmin,vmax=vmax,aspect='auto')
+axs[3].axis('off')
+# axs[3].set_title(f'Subsampled sharpeness= {np.int32(csh)}')
+plt.subplots_adjust(wspace=0.01, hspace=0)
+
+figname = f'comparision filtered x={x2}_zint{xint}_zfin{xfin}_yint{yint}_yfin{yfin}.png'
+# cbar = fig.colorbar(sm, aspect=10, orientation='vertical', ax=axs[3], label='dB')  
+if savefig:
+    plt.savefig(os.path.join(path,folder,subfolder,figname), dpi=300)
+    print('fig saved')
+plt.show()
+
+y = 423
+plot1y = dbscale(tomReconstructed[:,:,y,:])
+plot2y = dbscale(tomOriginal[:,:,y,:])
+plot3y = dbscale(tomSubsampled[:,:,y,:])
+plot4y = dbscale(tomSubsampledInterp[:,:,y,:])
+xint = 120
+xfin = 230
+yint = 83
+yfin = 183
+xintsub = xint
+xfinsub = xfin
+yintsub = int(yint/2)
+yfinsub = int(yfin/2)
+miniplot1 = plot1x[xint:xfin,yint:yfin]
+miniplot2 = plot2x[xint:xfin,yint:yfin]
+miniplot3 = plot3x[xintsub:xfinsub,yintsub:yfinsub]
+miniplot4 = plot4x[xint:xfin,yint:yfin]
+ash = np.round(sharpness(miniplot1),decimals=2)
+bsh = np.round(sharpness(miniplot2),decimals=2)
+csh = np.round(sharpness(miniplot3),decimals=2)
+dsh = np.round(sharpness(miniplot4),decimals=2)
+fig, axs = plt.subplots(1, 4, figsize=(40, 5))
+cmap= plt.cm.gray
+norm = cmnorm(vmin=vmin, vmax=vmax)
+sm = ScalarMappable(cmap=cmap, norm=norm) 
+axs[0].imshow(miniplot2, cmap='gray',vmin=vmin,vmax=vmax,aspect='auto')
+axs[0].axis('off')
+# axs[0].set_title(f'Original sharpness= {np.int32(bsh)}')
+
+axs[1].imshow(miniplot1, cmap='gray',vmin=vmin,vmax=vmax,aspect='auto')
+axs[1].axis('off') 
+# axs[1].set_title(f'cGAN reconstructed sharpness= {np.int32(ash)}')
+
+axs[2].imshow(miniplot4, cmap='gray',vmin=vmin,vmax=vmax,aspect='auto')
+axs[2].axis('off')
+# axs[2].set_title(f'Subsampled interpolated sharpeness= {np.int32(dsh)}')
+
+axs[3].imshow(miniplot3, cmap='gray',vmin=vmin,vmax=vmax,aspect='auto')
+axs[3].axis('off')
+# axs[3].set_title(f'Subsampled sharpeness= {np.int32(csh)}')
+plt.subplots_adjust(wspace=0.01, hspace=0)
+
+figname = f'comparision filtered y={y}_zint{xint}_zfin{xfin}_yint{yint}_yfin{yfin}.png'
+# cbar = fig.colorbar(sm, aspect=10, orientation='vertical', ax=axs[3], label='dB')  
+if savefig:
+    plt.savefig(os.path.join(path,folder,subfolder,figname), dpi=300)
+    print('fig saved')
+plt.show()
+
+#%%
+
+
 xint = 549
 xfin = 649
 yint = 573
@@ -203,10 +346,10 @@ xintsub = xint
 xfinsub = xfin
 yintsub = int(yint/2)
 yfinsub = int(yfin/2)
-miniplot12 = aFiltered[xint:xfin,yint:yfin]
-miniplot22 = bFiltered[xint:xfin,yint:yfin]
-miniplot32 = cFiltered[xintsub:xfinsub,yintsub:yfinsub]
-miniplot42 = dFiltered[xint:xfin,yint:yfin]
+miniplot12 = plot1[xint:xfin,yint:yfin]
+miniplot22 = plot2[xint:xfin,yint:yfin]
+miniplot32 = plot3[xintsub:xfinsub,yintsub:yfinsub]
+miniplot42 = plot4[xint:xfin,yint:yfin]
 ash = np.round(sharpness(miniplot1),decimals=2)
 bsh = np.round(sharpness(miniplot2),decimals=2)
 csh = np.round(sharpness(miniplot3),decimals=2)
@@ -438,7 +581,7 @@ if savefig:
     plt.savefig(os.path.join(path,folder,subfolder,figname), dpi=300)
     print('fig saved')
 plt.show()
-#%%
+
 
 fig, axs = plt.subplots(2, 4, figsize=(20, 10))
 cmap= plt.cm.twilight
