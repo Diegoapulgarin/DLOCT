@@ -10,6 +10,8 @@ import matplotlib.pyplot as plt
 import cv2
 import scipy
 from skimage.restoration import denoise_nl_means, estimate_sigma
+from scipy.spatial.distance import cosine as simcos
+
 from tqdm import tqdm
 
 def tiff_3Dsave(array, filename):
@@ -336,6 +338,8 @@ def histogram_difference(image1, image2, method="chi-squared"):
     elif method == "kullback-leibler":
         # Usar divergencia de Kullback-Leibler
         return cv2.compareHist(hist1, hist2, cv2.HISTCMP_KL_DIV)
+    elif method == 'cosine-similarity':
+        return simcos(np.ravel(hist1),np.ravel(hist2))
     else:
         raise ValueError("Método no reconocido")
 

@@ -148,10 +148,10 @@ bxFiltered = non_local_means_despeckling_3d(plot2x,search_window_size=21, block_
 cxFiltered = non_local_means_despeckling_3d(plot3x,search_window_size=21, block_size=5)
 dxFiltered = non_local_means_despeckling_3d(plot4x,search_window_size=21, block_size=5)
 
-xint = 100
-xfin = 323
-yint = 80
-yfin = 323
+xint = 500
+xfin = 630
+yint = 157
+yfin = 340
 xintsub = xint
 xfinsub = xfin
 yintsub = int(yint/2)

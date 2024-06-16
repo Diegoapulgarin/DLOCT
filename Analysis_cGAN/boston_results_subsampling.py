@@ -122,9 +122,9 @@ del tomsubsampledT3pol1, tomsubsampledT3pol2
 tomSubsampledT3 = np.stack((np.real(tomSubsampledT3),np.imag(tomSubsampledT3)),axis=3)
 #%%
 vmin = 60
-vmax = 120
+vmax = 90
 n = 20
-savefig = False
+savefig = True
 plotT1 = dbscale(tomOriginal[:,n,:,:])
 plotT2 = dbscale(tomSubsampledT2[:,n,:,:])
 plotT3 = dbscale(tomSubsampledT3[:,n,:])
@@ -181,7 +181,6 @@ tomSubsampledT3 = np.stack((np.real(tomSubsampledT3[150:650,:,:]),np.imag(tomSub
 vmin = 60
 vmax = 120
 n = 460
-savefig = True
 plotT1 = dbscale(tomOriginal[:,n,:,:])
 plotT2 = dbscale(tomSubsampledT2[:,n,:,:])
 plotT3 = dbscale(tomSubsampledT3[:,n,:])
