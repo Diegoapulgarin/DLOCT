@@ -233,4 +233,4 @@ plt.savefig(os.path.join(save_path,f'nail_reconstructed_x={i}_{np.shape(plot)[0]
         facecolor='auto', edgecolor='auto',
         backend=None,
        )
-
+#%%
