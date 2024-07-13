@@ -81,7 +81,6 @@ b = np.dot(K_matrix.T, S_vector)
 chi_hat = lstsq(A, b)[0]
 chi_reconstructed = chi_hat.reshape(N, N, N)
 
-# Visualización de los resultados
 import matplotlib.pyplot as plt
 #%%
 fig, axes = plt.subplots(1, 2, figsize=(12, 6))
