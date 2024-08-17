@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from numpy.fft import fft, fftshift,ifft
 from tqdm import tqdm
 
-from os import sep
+# from os import sep
 from numpy import load
 from numpy import zeros
 from numpy import ones
@@ -72,14 +72,14 @@ def read_tomogram2(file_path, dimensions):
 def logScale(slices):
     
     logslices = np.copy(slices)
-    nSlices = len(slices)
+    nSlices = slices.shape[2]
     logslicesAmp = abs(logslices[:, :, :, 0] + 1j*logslices[:, :, :, 1])
     # and retrieve the phase
     logslicesPhase = np.angle(logslices[:, :, :, 0] + 1j*logslices[:, :, :, 1])
     # reescale amplitude
     logslicesAmp = np.log10(logslicesAmp)
-    slicesMax = np.reshape(logslicesAmp.max(axis=(1, 2)), (nSlices, 1, 1))
-    slicesMin = np.reshape(logslicesAmp.min(axis=(1, 2)), (nSlices, 1, 1))
+    slicesMax = np.reshape(logslicesAmp.max(axis=(0, 1)), ( 1, 1,nSlices))
+    slicesMin = np.reshape(logslicesAmp.min(axis=(0, 1)), ( 1, 1,nSlices))
     logslicesAmp = (logslicesAmp - slicesMin) / (slicesMax - slicesMin)
     # --- here, we could even normalize each slice to 0-1, keeping the original
     # --- limits to rescale after the network processes
@@ -102,46 +102,17 @@ def inverseLogScale(oldslices, slicesMax, slicesMin):
     slices[:, :, :, 1] = np.imag(slicesAmp * np.exp(1j*slicesPhase))
     return slices
 
-def normalize_tomogram(tomogram):
-    z, x, y, _ = tomogram.shape
-    normalized_tomogram = np.zeros_like(tomogram)
-    max_values = np.zeros((y, 2))
-    min_values = np.zeros((y, 2))
-    c = 0.0001
-    tomogram = 10*np.log10(abs(tomogram+c)**2)
-    for i in range(y):
-        for j in range(2):  # Real and imaginary parts
-            bscan = tomogram[:, :, i, j]
-            max_val = np.max(bscan)
-            min_val = np.min(bscan)
-            normalized_tomogram[:, :, i, j] = (bscan - min_val) / (max_val - min_val)
-            max_values[i, j] = max_val
-            min_values[i, j] = min_val
-    return normalized_tomogram, max_values, min_values
-
-def denormalize_tomogram(normalized_tomogram, max_values, min_values):
-    z, x, y, _ = normalized_tomogram.shape
-    denormalized_tomogram = np.zeros_like(normalized_tomogram)
-    c = 0.0001
-    for i in range(y):
-        for j in range(2):  # Real and imaginary parts
-            bscan_normalized = normalized_tomogram[:, :, i, j]
-            max_val = max_values[i, j]
-            min_val = min_values[i, j]
-            denormalized_tomogram[:, :, i, j] = bscan_normalized * (max_val - min_val) + min_val
-    denormalized_tomogram = np.sqrt(10**(denormalize_tomogram/10))-c
-    return denormalized_tomogram
-
-def denormalize_bscan(normalized_tomogram, max_values, min_values):
-    denormalized_tomogram = np.zeros_like(normalized_tomogram)
-    c = 0.0001
-    for j in range(2):  # Real and imaginary parts
-        bscan_normalized = normalized_tomogram[:, :, j]
-        max_val = max_values[j]
-        min_val = min_values[j]
-        denormalized_tomogram[:, :, j] = bscan_normalized * (max_val - min_val) + min_val
-        denormalized_tomogram = np.sqrt(10**(denormalize_tomogram/10))-c
-    return denormalized_tomogram
+def inverseLogScaleSummary(oldslices, slicesMax, slicesMin):
+ 
+    slices = np.copy(oldslices)
+    slices = (slices * 2) - 1
+    slicesAmp = abs(slices[ :, :, 0] + 1j*slices[ :, :, 1])
+    slicesPhase = np.angle(slices[ :, :, 0] + 1j*slices[ :, :, 1])
+    slicesAmp = slicesAmp * (slicesMax - slicesMin) + slicesMin
+    slicesAmp = 10**(slicesAmp)
+    slices[:, :, 0] = np.real(slicesAmp * np.exp(1j*slicesPhase))
+    slices[:, :, 1] = np.imag(slicesAmp * np.exp(1j*slicesPhase))
+    return slices
 
 def ssim_loss(y_true, y_pred):
     # Calculate SSIM between the reference and predicted images
@@ -330,8 +301,8 @@ def generate_real_samples(dataset, n_samples, patch_shape,slicesmin,slicesmax):
     # retrieve selected images
     X1, X2 = trainA[ix], trainB[ix]
     # slice max and min
-    smax = slicesmax[ix,:,:]
-    smin = slicesmin[ix,:,:]
+    smax = slicesmax[:,:,ix]
+    smin = slicesmin[:,:,ix]
     # generate âœ¬realâœ¬ class labels (1)
     y = ones((n_samples, patch_shape, patch_shape, 1))
     return [X1, X2], y ,smin,smax
@@ -349,31 +320,31 @@ def summarize_performance(step, g_model, dataset, n_samples=3):
     path = '/home/dapulgaris/Models/cxpix2pixcomplexdbscale2'
     # select a sample of input images
     [X_realA, X_realB], _,smin,smax = generate_real_samples(dataset, n_samples,
-                                                            1,combined_max,
-                                                            combined_min)
-    vmin = 0.5
-    vmax = 2
+                                                            1,combined_min,
+                                                            combined_max)
+    vmin = 70
+    vmax = 120
     # generate a batch of fake samples
     X_fakeB, _ = generate_fake_samples(g_model, X_realA, 1)
     # plot real source images
     for i in range(n_samples):
-        # invslice0 = denormalize_bscan(X_realA[i], smax[i,:,1], smin[i,:,1])
-        plot0 = (abs((X_realA[i,:,:,0]+1j*X_realA[i,:,:,1])))
+        invslice0 = inverseLogScaleSummary(X_realA[i], smax[:,:,i,1], smin[:,:,i,1])
+        plot0 = dbscale(invslice0)
         pyplot.subplot(3, n_samples, 1 + i)
         pyplot.axis('off')
         pyplot.imshow(plot0, cmap='hot',aspect='auto',vmin=vmin,vmax=vmax)
 
     # plot generated target image
     for i in range(n_samples):
-        # invslice1 = denormalize_bscan(X_fakeB[i], smax[i,:,1], smin[i,:,1])
-        plot1 = (abs(X_fakeB[i,:,:,0]+1j*X_fakeB[i,:,:,1]))
+        invslice1 = inverseLogScaleSummary(X_fakeB[i],smax[:,:,i,1], smin[:,:,i,1])
+        plot1 = 20*np.log10(abs((invslice1[:,:,0]+1j*invslice1[:,:,1])))
         pyplot.subplot(3, n_samples, 1 + n_samples + i)
         pyplot.axis('off')
         pyplot.imshow(plot1, cmap='hot',aspect='auto',vmin=vmin,vmax=vmax)
     # plot real target image
     for i in range(n_samples):
-        # invslice2 = denormalize_bscan(X_realB[i], smax[i,:,0], smin[i,:,0])
-        plot2 = (abs((X_realB[i,:,:,0]+1j*X_realB[i,:,:,1])))
+        invslice2 = inverseLogScaleSummary(X_realB[i], smax[:,:,i,0], smin[:,:,i,0])
+        plot2 = dbscale(invslice2)
         pyplot.subplot(3, n_samples, 1 + n_samples*2 + i)
         pyplot.axis('off')
         pyplot.imshow(plot2, cmap='hot',aspect='auto',vmin=vmin,vmax=vmax)
@@ -467,6 +438,8 @@ for folder in folders:
             tomImag = read_tomogram2(imag_file_path, dimensions)
             tom = np.stack((tomReal,tomImag),axis=3)
             del tomImag, tomReal
+    tom = tom[:,:,250:260,:]
+    tomcc = tomcc[:,:,250:260,:]
     size = 512
     initz = 256
     initx1 = 0
@@ -475,10 +448,11 @@ for folder in folders:
     tom1cc = tomcc[initz:initz+size,initx1:initx1+size,:,:]
     tom2 = tom[initz:initz+size,initx2:,:,:]
     tom2cc = tomcc[initz:initz+size,initx2:,:,:]
-
+    print(tom1.shape)
+    print(tom2.shape)
     tomTarget.append(tom1)
     tomInput.append(tom1cc)
-    tomTarget.append(tom)
+    tomTarget.append(tom2)
     tomInput.append(tom2cc)
     print(f'tomogram {folder} loaded')
 del tom,tomcc,tom1,tom1cc,tom2,tom2cc
@@ -509,18 +483,19 @@ tomTargetmax =[]
 tomTargetmin =[]
 tomInputmax =[]
 tomInputmin =[]
+c = 0.0001
 for t in tqdm(range(len(tomInput))):
-    tomNorm,tmax,tmin = normalize_tomogram(tomTarget[t])
-    tomccNorm,imax,imin = normalize_tomogram(tomInput[t])
+    tomNorm,tmax,tmin = logScale(tomTarget[t]+c)
+    tomccNorm,imax,imin = logScale(tomInput[t]+c)
     tomTargetNorm.append(tomNorm)
     tomInputNorm.append(tomccNorm)
     tomTargetmax.append(tmax)
     tomTargetmin.append(tmin)
     tomInputmax.append(imax)
     tomInputmin.append(imin)
-
-del tomTarget, tomInput
+del tomTarget, tomInput, tomNorm,tomccNorm,tmax,tmin,imax,imin
 print('normalized tomograms')
+#%%
 def combine_tomograms(tomogram_list):
     z, x, y, _ = tomogram_list[0].shape
     combined_tomograms = []
@@ -533,12 +508,12 @@ def combine_tomograms(tomogram_list):
 
 combined_target = combine_tomograms(tomTargetNorm)
 combined_input = combine_tomograms(tomInputNorm)
-combined_input_max = np.concatenate(tomInputmax, axis=0)
-combined_input_min = np.concatenate(tomInputmin, axis=0)
-combined_target_max = np.concatenate(tomTargetmax, axis=0)
-combined_target_min = np.concatenate(tomTargetmin, axis=0)
-combined_max = np.stack((combined_target_max,combined_input_max),axis=2)
-combined_min = np.stack((combined_target_min,combined_input_min),axis=2)
+combined_input_max = np.concatenate(tomInputmax, axis=2)
+combined_input_min = np.concatenate(tomInputmin, axis=2)
+combined_target_max = np.concatenate(tomTargetmax, axis=2)
+combined_target_min = np.concatenate(tomTargetmin, axis=2)
+combined_max = np.stack((combined_target_max,combined_input_max),axis=3)
+combined_min = np.stack((combined_target_min,combined_input_min),axis=3)
 print(combined_target.shape)
 image_shape = (combined_target.shape[1],combined_target.shape[2],2)
 del tomTargetNorm, tomInputNorm, tomTargetmax, tomTargetmin, tomInputmax, tomInputmin
@@ -557,9 +532,66 @@ g_loss_epoch  = []
 n_steps_epoch = []
 n_epochs = 100
 print(f'start training - epochs{n_epochs}')
-# train(d_model, g_model, gan_model, dataset,n_epochs)
+train(d_model, g_model, gan_model, dataset,n_epochs)
+np.save('/home/dapulgaris/Models/cxpix2pixcomplexdbscale2/d_loss1', d_loss1_epoch)
+np.save('/home/dapulgaris/Models/cxpix2pixcomplexdbscale2/d_loss2', d_loss2_epoch)
+np.save('/home/dapulgaris/Models/cxpix2pixcomplexdbscale2/g_loss',  g_loss_epoch)
+np.save('/home/dapulgaris/Models/cxpix2pixcomplexdbscale2/n_epochs', n_epochs)
 
-# np.save('/home/dapulgaris/Models/cxpix2pixcomplexdbscale2/d_loss1', d_loss1_epoch)
-# np.save('/home/dapulgaris/Models/cxpix2pixcomplexdbscale2/d_loss2', d_loss2_epoch)
-# np.save('/home/dapulgaris/Models/cxpix2pixcomplexdbscale2/g_loss',  g_loss_epoch)
-# np.save('/home/dapulgaris/Models/cxpix2pixcomplexdbscale2/n_epochs', n_epochs)
+
+
+
+
+
+
+# #%%
+
+# n_samples = 3
+# step = 1
+# path = r'C:\Users\USER\Documents\GitHub\imagenes test'
+# # select a sample of input images
+# [X_realA, X_realB], _,smin,smax = generate_real_samples(dataset, n_samples,
+#                                                         1,combined_min,
+#                                                         combined_max)
+# vmin = 70
+# vmax = 120
+# # generate a batch of fake samples
+# X_fakeB, _ = generate_fake_samples(g_model, X_realA, 1)
+# # plot real source images
+# for i in range(n_samples):
+#     invslice0 = inverseLogScaleSummary(X_realA[i], smax[:,:,i,1], smin[:,:,i,1])
+#     plot0 = dbscale(invslice0)
+#     pyplot.subplot(3, n_samples, 1 + i)
+#     pyplot.axis('off')
+#     pyplot.imshow(plot0, cmap='hot',aspect='auto',vmin=vmin,vmax=vmax)
+
+# # plot generated target image
+# for i in range(n_samples):
+#     invslice1 = inverseLogScaleSummary(X_fakeB[i],smax[:,:,i,1], smin[:,:,i,1])
+#     plot1 = 20*np.log10(abs((invslice1[:,:,0]+1j*invslice1[:,:,1])))
+#     pyplot.subplot(3, n_samples, 1 + n_samples + i)
+#     pyplot.axis('off')
+#     pyplot.imshow(plot1, cmap='hot',aspect='auto',vmin=vmin,vmax=vmax)
+# # plot real target image
+# for i in range(n_samples):
+#     invslice2 = inverseLogScaleSummary(X_realB[i], smax[:,:,i,0], smin[:,:,i,0])
+#     plot2 = dbscale(invslice2)
+#     pyplot.subplot(3, n_samples, 1 + n_samples*2 + i)
+#     pyplot.axis('off')
+#     pyplot.imshow(plot2, cmap='hot',aspect='auto',vmin=vmin,vmax=vmax)
+# # save plot to file
+# filename1 = path +'/plot_%06d.png' % (step+1)
+# pyplot.savefig(filename1)
+# pyplot.close()
+# # save the generator model
+# filename2 = path+'/model_%06d.h5' % (step+1)
+# g_model.save(filename2)
+
+#%%
+
+
+
+
+
+
+
