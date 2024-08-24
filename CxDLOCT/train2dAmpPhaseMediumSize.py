@@ -45,7 +45,6 @@ def dbscale(darray):
         img = 10*np.log10(abs(darray[:,:])**2)
     return img
 
-
 def extract_dimensions(file_name):
     parts = file_name.split('_')
     dimensions = []
@@ -238,24 +237,24 @@ def define_generator(image_shape):
     # image input
     in_image = Input(shape=image_shape)
     # encoder model -> Secuencia de Convolución y activación -> Encoder ascendente
-    e1 = define_encoder_block(in_image, 64, batchnorm=False)
-    e2 = define_encoder_block(e1, 128)
-    e3 = define_encoder_block(e2, 256)
-    e4 = define_encoder_block(e3, 256)
+    e1 = define_encoder_block(in_image, 128, batchnorm=False)
+    e2 = define_encoder_block(e1, 256)
+    e3 = define_encoder_block(e2, 512)
+    e4 = define_encoder_block(e3, 512)
     e5 = define_encoder_block(e4, 512)
     e6 = define_encoder_block(e5, 512)
-    e7 = define_encoder_block(e6, 512)
+    e7 = define_encoder_block(e6, 1024)
     # bottleneck, no batch norm and relu
     b = Conv2D(512, (4,4), strides=(2,2), padding='same', kernel_initializer=init)(e7)
     b = Activation('relu')(b)
     # decoder model -> Secuencia de Convolución y activación -> Decoder descendente
-    d1 = decoder_block(b, e7, 512)
+    d1 = decoder_block(b, e7, 1024)
     d2 = decoder_block(d1, e6, 512)
     d3 = decoder_block(d2, e5, 512)
-    d4 = decoder_block(d3, e4, 256, dropout=False)
-    d5 = decoder_block(d4, e3, 256, dropout=False)
-    d6 = decoder_block(d5, e2, 128, dropout=False)
-    d7 = decoder_block(d6, e1, 64, dropout=False)
+    d4 = decoder_block(d3, e4, 512, dropout=False)
+    d5 = decoder_block(d4, e3, 512, dropout=False)
+    d6 = decoder_block(d5, e2, 256, dropout=False)
+    d7 = decoder_block(d6, e1, 128, dropout=False)
     # output
     g = Conv2DTranspose(image_shape[2], (4,4), strides=(2,2), padding='same', kernel_initializer=init)(d7)
     out_image = Activation('tanh')(g) #'tanh'
@@ -317,13 +316,13 @@ def generate_fake_samples(g_model, samples, patch_shape):
 
 # generate samples and save as a plot and save the model
 def summarize_performance(step, g_model, dataset, n_samples=3):
-    path = '/home/dapulgaris/Models/cxpix2pixcomplexdbscale2'
+    path = r'E:\models\mse-mae-1-1_tanh_relu_7L'
     # select a sample of input images
     [X_realA, X_realB], _,smin,smax = generate_real_samples(dataset, n_samples,
                                                             1,combined_min,
                                                             combined_max)
     vmin = 70
-    vmax = 120
+    vmax = 150
     # generate a batch of fake samples
     X_fakeB, _ = generate_fake_samples(g_model, X_realA, 1)
     # plot real source images
@@ -349,11 +348,11 @@ def summarize_performance(step, g_model, dataset, n_samples=3):
         pyplot.axis('off')
         pyplot.imshow(plot2, cmap='hot',aspect='auto',vmin=vmin,vmax=vmax)
     # save plot to file
-    filename1 = path +'/plot_%06d.png' % (step+1)
+    filename1 = os.path.join(path,'plots','plot_%06d.png' % (step+1))
     pyplot.savefig(filename1)
     pyplot.close()
     # save the generator model
-    filename2 = path+'/model_%06d.h5' % (step+1)
+    filename2 = os.path.join(path+'models'+'model_%06d.h5' % (step+1))
     g_model.save(filename2)
 
 
@@ -407,10 +406,10 @@ def train(d_model, g_model, gan_model, dataset, n_epochs, n_batch=1):
             g_loss_val  = []
 
 #%% reading experimental tomogram
-dataPath = 'E:\DLOCT\Experimental_Data_complex'
+dataPath = r'E:\DLOCT\Experimental_Data_complex'
 noArtifacts = 'tomogram_no_artifacts'
 artifacts = 'tomogram_artifacts'
-folders = ['depth_fovea']
+folders = ['depth_nail']
 tomTarget = []
 tomInput = []
 for folder in folders:
@@ -438,8 +437,8 @@ for folder in folders:
             tomImag = read_tomogram2(imag_file_path, dimensions)
             tom = np.stack((tomReal,tomImag),axis=3)
             del tomImag, tomReal
-    tom = tom[:,:,250:260,:]
-    tomcc = tomcc[:,:,250:260,:]
+    # tom = tom[:,:,250:260,:]
+    # tomcc = tomcc[:,:,250:260,:]
     size = 512
     initz = 256
     initx1 = 0
@@ -517,26 +516,27 @@ combined_min = np.stack((combined_target_min,combined_input_min),axis=3)
 print(combined_target.shape)
 image_shape = (combined_target.shape[1],combined_target.shape[2],2)
 del tomTargetNorm, tomInputNorm, tomTargetmax, tomTargetmin, tomInputmax, tomInputmin
+dataset=[combined_input,combined_target]
+del combined_target,combined_input
 #%%
 # define the models
 d_model = define_discriminator(image_shape)
 g_model = define_generator(image_shape)
 # define the composite model
 gan_model = define_gan(g_model, d_model, image_shape)
-dataset=[combined_input,combined_target]
-del combined_target,combined_input
 # train model
 d_loss1_epoch = []
 d_loss2_epoch = []
 g_loss_epoch  = []
 n_steps_epoch = []
-n_epochs = 100
+n_epochs = 50
 print(f'start training - epochs{n_epochs}')
 train(d_model, g_model, gan_model, dataset,n_epochs)
-np.save('/home/dapulgaris/Models/cxpix2pixcomplexdbscale2/d_loss1', d_loss1_epoch)
-np.save('/home/dapulgaris/Models/cxpix2pixcomplexdbscale2/d_loss2', d_loss2_epoch)
-np.save('/home/dapulgaris/Models/cxpix2pixcomplexdbscale2/g_loss',  g_loss_epoch)
-np.save('/home/dapulgaris/Models/cxpix2pixcomplexdbscale2/n_epochs', n_epochs)
+path = r'E:\models\mse-mae-1-1_tanh_relu_7L'
+np.save(os.path.jopin(path,'d_loss1.npy'), d_loss1_epoch)
+np.save(os.path.jopin(path,'d_loss2.npy'), d_loss2_epoch)
+np.save(os.path.jopin(path,'g_loss.npy'),  g_loss_epoch)
+np.save(os.path.jopin(path,'n_epochs.npy'), n_epochs)
 
 
 

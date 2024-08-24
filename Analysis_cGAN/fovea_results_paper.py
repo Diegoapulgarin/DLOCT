@@ -45,16 +45,19 @@ tomi = np.reshape(tomi,(nZbin,nXbin,nYbin),order='F')
 tomReconstructed = np.stack((tom, tomi), axis=3)
 del tom, tomi
 print('reconstructed loaded')
-filename = '[p.SHARP][s.Eye2a][10-09-2019_13-14-42]_Tomint_z=(295..880)_x=(65..960)_y=(1..480)_subsampled'
-nYbins = int(nYbin/2)
-tom = np.fromfile(path+'\\'+filename+real,'single')
-tom = np.reshape(tom,(nZbin,nXbin,nYbins,npol),order='F')
-tom = np.sum(tom,axis=3)
-tomi = np.fromfile(path+'\\'+filename+imag,'single')
-tomi = np.reshape(tomi,(nZbin,nXbin,nYbins,npol),order='F')
-tomi = np.sum(tomi,axis=3)
-tomSubsampled = np.stack((tom, tomi), axis=3)
-del tom, tomi
+tomSubsampled = tomOriginal[:,:,1::2,:]
+
+# filename = '[p.SHARP][s.Eye2a][10-09-2019_13-14-42]_Tomint_z=(295..880)_x=(65..960)_y=(1..480)_subsampled'
+# nYbins = int(nYbin/2)
+# tom = np.fromfile(path+'\\'+filename+real,'single')
+# tom = np.reshape(tom,(nZbin,nXbin,nYbins,npol),order='F')
+# tom = np.sum(tom,axis=3)
+# tomi = np.fromfile(path+'\\'+filename+imag,'single')
+# tomi = np.reshape(tomi,(nZbin,nXbin,nYbins,npol),order='F')
+# tomi = np.sum(tomi,axis=3)
+# tomSubsampled = np.stack((tom, tomi), axis=3)
+# del tom, tomi
+
 print('subsampled loaded')
 
 # tomSubsampledInterp = np.zeros((nZbin,nXbin,nYbin,2))
@@ -94,7 +97,7 @@ x = 519
 folder = 'cortes'
 subfolder = f'corte{6}'
 savefig = False
-savefigindividuals = True
+savefigindividuals = False
 vmin= 75
 vmax = 120
 vmin2 = 70
@@ -372,7 +375,6 @@ plt.show()
 
 #%%
 
-
 xint = 549
 xfin = 649
 yint = 573
@@ -509,6 +511,7 @@ if savefig:
 plt.show()
 #%%
 
+
 pathCmap = r'C:\Users\USER\Documents\GitHub\DLOCT'
 file = 'c3_colormap.csv'
 c3 = pd.read_csv(os.path.join(pathCmap,file),sep=' ',header=None)
@@ -519,7 +522,6 @@ vmin = -3
 vmax = 3
 correlations = []
 fileNames = []
-
 enfaceReconstructed = tomReconstructed[z,:,:,:]
 correlationReconstructedx,correlationReconstructedy = Correlation(enfaceReconstructed)
 stdxr = np.std(correlationReconstructedx)
@@ -546,7 +548,7 @@ correlations.append(correlationOriginaly)
 fileNames.append(filenamex)
 fileNames.append(filenamey)
 
-enfaceSubsampled = tomSubsampledInterp[z,:,:,:]
+enfaceSubsampled = tomSubsampledInterpBi[z,:,:,:]
 correlationSubsampledx,correlationSubsampledy = Correlation(enfaceSubsampled)
 stdxs = np.std(correlationSubsampledx)
 meanxs = np.mean(correlationSubsampledx)
@@ -559,7 +561,7 @@ correlations.append(correlationSubsampledy)
 fileNames.append(filenamex)
 fileNames.append(filenamey)
 
-enfaceInterpolated = tomSubsampledInterpBi[z,:,:,:]
+enfaceInterpolated = tomSubsampledInterp[z,:,:,:]
 correlationInterpolatedx,correlationInterpolatedy = Correlation(enfaceInterpolated)
 stdxi = np.std(correlationInterpolatedx)
 meanxi = np.mean(correlationInterpolatedx)
@@ -571,6 +573,11 @@ correlations.append(correlationInterpolatedx)
 correlations.append(correlationInterpolatedy)
 fileNames.append(filenamex)
 fileNames.append(filenamey)
+
+
+enfaceSubsampled2 = tomSubsampled[z,:,:,:]
+correlationSubsampledx2,correlationSubsampledy2 = Correlation(enfaceSubsampled2)
+
 
 
 fig, axs = plt.subplots(1, 4, figsize=(20, 5))
@@ -708,6 +715,7 @@ minicorrelations.append(minicorrcubicx)
 minicorrelations.append(minicorrcubicy)
 
 #%%
+
 if savefigindividuals:
     for i in tqdm(range(len(fileNames))):
         
@@ -782,7 +790,7 @@ axs[1].imshow(minicorrreconstx,vmax= vmax, vmin=vmin, cmap=color_plot,aspect='au
 axs[1].axis('off') 
 axs[1].set_title(f'cGAN reconstructed mean= {meanxr}')
 
-axs[2].imshow(minicorrlinearx,vmax= vmax, vmin=vmin,cmap=color_plot,aspect='auto')
+axs[2].imshow(minicorrlinearx,cmap=color_plot,aspect='auto')
 axs[2].axis('off')
 axs[2].set_title(f'Subsampled interpolated mean= {meanxi}')
 
@@ -815,13 +823,40 @@ mpscubic = MPS_single(enfaceInterpolated[:,:,0]+1j*enfaceInterpolated[:,:,1],mea
 promedios_reales = np.mean(enfaceSubsampled[:,:,0], axis=1)
 promedios_imaginarios = np.mean(enfaceSubsampled[:,:,1], axis=1)
 
-# Graficar los promedios a lo largo del eje y
-plt.figure(figsize=(10, 6))
-plt.plot(promedios_reales, label='Promedio Real')
-plt.plot(promedios_imaginarios, label='Promedio Imaginario')
-plt.xlabel('Índice de Fila (Eje Y)')
-plt.ylabel('Promedio del Valor de los Píxeles')
-plt.title('Promedios de los Valores en el Eje Y para Cada Canal')
-plt.legend()
-plt.grid(True)
-plt.show()
+# # Graficar los promedios a lo largo del eje y
+# plt.figure(figsize=(10, 6))
+# plt.plot(promedios_reales, label='Promedio Real')
+# plt.plot(promedios_imaginarios, label='Promedio Imaginario')
+# plt.xlabel('Índice de Fila (Eje Y)')
+# plt.ylabel('Promedio del Valor de los Píxeles')
+# plt.title('Promedios de los Valores en el Eje Y para Cada Canal')
+# plt.legend()
+# plt.grid(True)
+# plt.show()
+
+
+#%%
+tomSubsampled2 = tomOriginal[:,:,1::2,:]#%%
+promedios_reales = np.mean(tomSubsampled2[0,:,:,0], axis=1)
+promedios_imaginarios = np.mean(tomSubsampled2[0,:,:,1], axis=1)
+
+#%%
+def rmse(predictions, targets):
+    return np.sqrt(((predictions - targets) ** 2).mean())
+
+rmsrx = rmse(minicorroriginalx,minicorrreconstx)
+rmsry = rmse(minicorroriginaly,minicorrreconsty)
+print(rmsrx)
+print(rmsry)
+
+rmsix = rmse(minicorroriginalx,minicorrlinearx)
+rmsiy = rmse(minicorroriginaly,minicorrlineary)
+
+print(rmsix)
+print(rmsiy)
+
+rmscx = rmse(minicorroriginalx,minicorrcubicx)
+rmscy = rmse(minicorroriginaly,minicorrcubicy)
+
+print(rmscx)
+print(rmscy)

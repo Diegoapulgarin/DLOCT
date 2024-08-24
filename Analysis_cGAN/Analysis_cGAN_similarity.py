@@ -150,7 +150,8 @@ fig.update_xaxes(
 )
 
 # fig.show()
-fig.write_html('ssim pre and post tnode compare.html')
+save_path = r'E:\DLOCT\ultimo experimento subsampling paper\Fovea\cortes\corte6'
+fig.write_html(os.path.join(save_path,'ssim pre and post tnode compare.html'))
 #%%
 min_ssim = 144
 max_ssim = 180
@@ -251,3 +252,85 @@ print(f'std ssim tnode:{np.std(metrics_tnode[:,0])}')
 print(f'std mse tnode:{np.std(metrics_tnode[:,1])}')
 print(f'std psnr tnode:{np.std(metrics_tnode[:,2])}')
 print(f'std hdiff tnode:{np.std(metrics_tnode[:,3])}')
+
+#%%
+
+ssim_synthetic = np.load(os.path.join(path,'ssim synthetic fovea flat.npy'))
+ssim_experimental = np.load(os.path.join(path,'ssim experimental fovea flat.npy'))
+#%%
+fig = make_subplots(rows=1, cols=1)
+pretnode_mean = np.mean(metrics_pretnode[:,0])
+exper_mean = np.mean(ssim_experimental)
+syn_mean = np.mean(ssim_synthetic)
+yaxis_config = {
+    'title': 'SSIM',
+    'range': [0.4, 0.9],
+    'titlefont': {'family': 'Times New Roman', 'size': 25, 'color': 'black'},
+    'tickfont': {'family': 'Times New Roman', 'size': 20, 'color': 'black'}
+}
+
+fig.add_trace(
+    go.Scatter(y=ssim_experimental, 
+               mode='lines', 
+               name='SSIM - experimental model',
+               line=dict(color='blue')),
+    row=1, col=1
+)
+
+fig.add_trace(go.Scatter(y=[exper_mean]*len(metrics_pretnode[:,0]), 
+                         name=f'Average SSIM - experimental model',
+                            mode='lines', 
+                            line=dict(color='blue', dash='dash')))
+
+fig.add_trace(
+    go.Scatter(y=metrics_pretnode[:,0], 
+               mode='lines', 
+               name='SSIM - syn. + exper. model',
+               line=dict(color='red')),
+               
+    row=1, col=1
+)
+
+
+fig.add_trace(go.Scatter(y=[pretnode_mean]*len(metrics_pretnode[:,0]), 
+                         name=f'Average SSIM - syn. + exper. model',
+                         mode='lines', line=dict(color='red', dash='dash')))
+
+
+fig.add_trace(
+    go.Scatter(y=ssim_synthetic, 
+               mode='lines', 
+               name='SSIM - synthetic model',
+               line=dict(color='green')),
+               
+    row=1, col=1
+)
+
+
+fig.add_trace(go.Scatter(y=[syn_mean]*len(metrics_pretnode[:,0]), 
+                         name=f'Average SSIM - synthetic model',
+                         mode='lines', line=dict(color='green', dash='dash')))
+
+fig.update_layout(
+    title_text="Comparison of SSIM between different experiments",
+    title={
+        'font': {'family': 'Times New Roman', 'size': 30, 'color': 'black'}
+    },
+    height=600,  # Ajusta la altura si es necesario
+    showlegend=True,
+    yaxis=yaxis_config,
+    legend={
+        'font': {'family': 'Times New Roman', 'size': 18, 'color': 'black'}
+    }
+)
+
+fig.update_xaxes(
+    title_text="en-face slices",
+    titlefont={'family': 'Times New Roman', 'size': 25, 'color': 'black'},
+    tickfont={'family': 'Times New Roman', 'size': 20, 'color': 'black'},
+    row=1, col=1
+)
+
+# fig.show()
+save_path = r'E:\DLOCT\ultimo experimento subsampling paper\Fovea\cortes\corte6'
+fig.write_html(os.path.join(save_path,'ssim exper and synthetics.html'))
