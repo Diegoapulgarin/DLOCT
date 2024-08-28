@@ -47,7 +47,7 @@ tomReconstructed = np.stack((tom, tomi), axis=3)
 del tom, tomi
 print('reconstructed loaded')
 #%%
-tomSubsampled = tomOriginal[:,:,0::2,:]
+tomSubsampled = tomOriginal[:,:,0::2,:].copy()
 print('tom Subsampled')
 #%%
 

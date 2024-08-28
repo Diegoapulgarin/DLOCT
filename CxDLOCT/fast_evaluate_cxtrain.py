@@ -10,6 +10,8 @@ sys.path.append(r'C:\Users\USER\Documents\GitHub\DLOCT\cGAN_subsampling\Function
 from Metrics import ownPhaseMetricCorrected_numpy, ssimMetric, ownPhaseMetric_numpy
 from tensorflow.keras import backend as K
 import gc
+from tensorflow.keras.activations import gelu
+from tensorflow.keras.layers import Activation
 
 def dbscale(darray):
     if len(np.shape(darray))==3:
@@ -96,6 +98,10 @@ def min_value(array):
             min_val = array[i]  # update maximum value
             min_pos = i         # update maximum position
     return min_val, min_pos
+
+def custom_gelu(x):
+    return gelu(x, approximate=True)
+
 #%%
 dataPath = r'E:\DLOCT\Experimental_Data_complex'
 tom = np.load(os.path.join(dataPath,'validationOpticNerve.npy'))
@@ -110,9 +116,9 @@ tomHalfinit = tom[initz:initz+size,initx1:initx1+size,:,:]
 tomHalfinitcc = tomcc[initz:initz+size,initx1:initx1+size,:,:]
 tomHalfinit2 = tom[initz:initz+size,initx2:,:,:]
 tomHalfinit2cc = tomcc[initz:initz+size,initx2:,:,:]
-tomNorm,tmax,tmin = logScale(tomHalfinit2)
+tomNorm,tmax,tmin = logScale(tomHalfinit)
 tomNorm = np.transpose(tomNorm, (2, 0, 1, 3))
-tomccNorm,imax,imin = logScale(tomHalfinit2cc)
+tomccNorm,imax,imin = logScale(tomHalfinitcc)
 tomccNorm = np.transpose(tomccNorm, (2, 0, 1, 3))
 
 pathcomplex = r'C:\Users\USER\Documents\GitHub\Simulated_Data_Complex\validation'
@@ -136,7 +142,7 @@ tomccNormS = np.transpose(tomccNormS, (2, 0, 1, 3))
 print('tomograms loaded')
 
 #%%
-modelsPath = r'E:\models\cxpix2pixcomplexdbscale4\models'
+modelsPath = r'E:\models\cxpix2pixcomplexdbscale\models'
 listmodels = os.listdir(modelsPath)
 metrics = []
 metricsS = []
@@ -185,31 +191,32 @@ axs[1].plot(mseS[1:])
 axs[1].set_title('mse')
 fig.suptitle('Metrics for syntethics', fontsize=16)
 
+#%%
 print('___________Experimentals_____________')
 max_val, max_pos = max_value(ssims)
-print(f"The maximum value of the ssim metric is {max_val} and its position is {max_pos}.")
+print(f"The maximum value of the ssim metric is {np.round(max_val,2)}, and the model is {listmodels[max_pos]}.")
 
 min_val, min_pos = min_value(ssims)
-print(f"The minimum value of the ssim metric is {min_val} and its position is {min_pos}.")
+print(f"The minimum value of the ssim metric is {np.round(min_val,2)} and the model is {listmodels[min_pos]}.")
 
 max_val, max_pos = max_value(mse)
-print(f"The maximum value of the mse metric is {max_val} and its position is {max_pos}.")
+print(f"The maximum value of the mse metric is {np.round(max_val,2)} and the model is {listmodels[max_pos]}.")
 
 min_val, min_pos = min_value(mse)
-print(f"The minimum value of the mse metric is {min_val} and its position is {min_pos}.")
+print(f"The minimum value of the mse metric is {np.round(min_val,2)} and the model is {listmodels[min_pos]}.")
 
 print('___________Syntethics________________')
 max_val, max_pos = max_value(ssimsS)
-print(f"The maximum value of the ssim metric is {max_val} and its position is {max_pos}.")
+print(f"The maximum value of the ssim metric is {np.round(max_val,2)} and the model is {listmodels[max_pos]}.")
 
 min_val, min_pos = min_value(ssimsS)
-print(f"The minimum value of the ssim metric is {min_val} and its position is {min_pos}.")
+print(f"The minimum value of the ssim metric is {np.round(min_val,2)} and the model is {listmodels[min_pos]}.")
 
 max_val, max_pos = max_value(mseS)
-print(f"The maximum value of the mse metric is {max_val} and its position is {max_pos}.")
+print(f"The maximum value of the mse metric is {np.round(max_val,2)} and the model is {listmodels[max_pos]}.")
 
 min_val, min_pos = min_value(mseS)
-print(f"The minimum value of the mse metric is {min_val} and its position is {min_pos}.")
+print(f"The minimum value of the mse metric is {np.round(min_val,2)} and the model is {listmodels[min_pos]}.")
 
 
 
