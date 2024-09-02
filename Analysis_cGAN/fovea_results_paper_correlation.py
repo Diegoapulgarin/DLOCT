@@ -31,11 +31,10 @@ nYbin = 960
 npol = 2
 tom = np.fromfile(path+'\\'+filename+real,'single')
 tom = np.reshape(tom,(nZbin,nXbin,nYbin,npol),order='F')
-tom = np.sum(tom,axis=3)
 tomi = np.fromfile(path+'\\'+filename+imag,'single')
 tomi = np.reshape(tomi,(nZbin,nXbin,nYbin,npol),order='F')
-tomi = np.sum(tomi,axis=3)
-tomOriginal = np.stack((tom, tomi), axis=3)
+tomOriginal = np.stack((tom, tomi), axis=4)
+tomOriginal = np.sum(tomOriginal,axis=4)
 del tom, tomi
 print('original loaded')
 filename = '[p.SHARP][s.Eye2a][10-09-2019_13-14-42]_Tomint_z=(295..880)_x=(65..960)_y=(1..960)_reconstructed'

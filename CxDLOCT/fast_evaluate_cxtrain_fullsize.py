@@ -108,17 +108,10 @@ tom = np.load(os.path.join(dataPath,'validationOpticNerve.npy'))
 tomcc = np.load(os.path.join(dataPath,'validationOpticNervecc.npy'))
 # tom = np.load(os.path.join(dataPath,'depthNail.npy'))
 # tomcc = np.load(os.path.join(dataPath,'depthNailcc.npy'))
-size = 512
-initz = 256
-initx1 = 0
-initx2 = 512
-tomHalfinit = tom[initz:initz+size,initx1:initx1+size,:,:]
-tomHalfinitcc = tomcc[initz:initz+size,initx1:initx1+size,:,:]
-tomHalfinit2 = tom[initz:initz+size,initx2:,:,:]
-tomHalfinit2cc = tomcc[initz:initz+size,initx2:,:,:]
-tomNorm,tmax,tmin = logScale(tomHalfinit)
+
+tomNorm,tmax,tmin = logScale(tom)
 tomNorm = np.transpose(tomNorm, (2, 0, 1, 3))
-tomccNorm,imax,imin = logScale(tomHalfinitcc)
+tomccNorm,imax,imin = logScale(tomcc)
 tomccNorm = np.transpose(tomccNorm, (2, 0, 1, 3))
 
 pathcomplex = r'C:\Users\USER\Documents\GitHub\Simulated_Data_Complex\validation'
@@ -142,7 +135,7 @@ tomccNormS = np.transpose(tomccNormS, (2, 0, 1, 3))
 print('tomograms loaded')
 
 #%%
-modelsPath = r'E:\models\cxpix2pixcomplexdbscale2\models'
+modelsPath = r'E:\models\cxpix2pixcomplexdbscale4\models'
 listmodels = os.listdir(modelsPath)
 metrics = []
 metricsS = []
