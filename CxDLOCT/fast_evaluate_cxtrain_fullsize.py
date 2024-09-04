@@ -113,25 +113,6 @@ tomNorm,tmax,tmin = logScale(tom)
 tomNorm = np.transpose(tomNorm, (2, 0, 1, 3))
 tomccNorm,imax,imin = logScale(tomcc)
 tomccNorm = np.transpose(tomccNorm, (2, 0, 1, 3))
-
-pathcomplex = r'C:\Users\USER\Documents\GitHub\Simulated_Data_Complex\validation'
-artifact_files = os.listdir(pathcomplex)
-for imag_file, real_file in zip(artifact_files[::2], artifact_files[1::2]):
-    real_file_path = os.path.join(pathcomplex, real_file)
-    imag_file_path = os.path.join(pathcomplex, imag_file)
-    dimensions = extract_dimensions(real_file[:-4])
-    tomReal = read_tomogram(real_file_path, dimensions)
-    tomImag = read_tomogram(imag_file_path, dimensions)
-    tomS = np.stack((tomReal,tomImag),axis=3)
-    del tomImag, tomReal
-
-tomccsyntetic = ifft(tomS[:,:,:,0]+1j*tomS[:,:,:,1],axis=0)
-tomccsyntetic = fft(tomccsyntetic.real,axis=0)
-tomccsyntetic = np.stack((tomccsyntetic.real,tomccsyntetic.imag),axis=3)
-tomNormS,imaxS,iminS = logScale(tomS)
-tomNormS = np.transpose(tomNormS, (2, 0, 1, 3))
-tomccNormS,imaxS,iminS = logScale(tomccsyntetic)
-tomccNormS = np.transpose(tomccNormS, (2, 0, 1, 3))
 print('tomograms loaded')
 
 #%%
@@ -143,7 +124,7 @@ for model in tqdm(listmodels):
     model_loaded = tf.keras.models.load_model(os.path.join(modelsPath,model), 
                                               compile=False)
     tomPredict = np.array(model_loaded.predict(tomccNorm, batch_size=1), dtype='float32')
-    tomPredictS = np.array(model_loaded.predict(tomccNormS, batch_size=1), dtype='float32')
+    # tomPredictS = np.array(model_loaded.predict(tomccNormS, batch_size=1), dtype='float32')
     ssims = np.mean(ssimMetric(tomNorm, tomPredict))
     ssims_std = np.std(ssimMetric(tomNorm, tomPredict))
     ssims_uncertainty = ssims_std / np.sqrt(len(tomPredict))
@@ -152,14 +133,6 @@ for model in tqdm(listmodels):
     mse_uncertainty = mse_std / np.sqrt(np.prod(np.shape(mse)))
     epoch_metrics = np.array((ssims,ssims_std,ssims_uncertainty,mse,mse_std,mse_uncertainty))
     metrics.append(epoch_metrics)
-    ssims = np.mean(ssimMetric(tomNormS, tomPredictS))
-    ssims_std = np.std(ssimMetric(tomNormS, tomPredictS))
-    ssims_uncertainty = ssims_std / np.sqrt(len(tomPredictS))
-    mse = np.mean((tomNormS - tomPredictS)**2)
-    mse_std = np.std((tomNormS - tomPredictS)**2)
-    mse_uncertainty = mse_std / np.sqrt(np.prod(np.shape(mse)))
-    epoch_metrics = np.array((ssims,ssims_std,ssims_uncertainty,mse,mse_std,mse_uncertainty))
-    metricsS.append(epoch_metrics)
     del model_loaded
     gc.collect()
     K.clear_session()
@@ -175,14 +148,6 @@ axs[1].plot(mse[1:])
 axs[1].set_title('mse')
 fig.suptitle('Metrics for experimentals', fontsize=16)
 
-ssimsS = metricsS_log[:,0]
-mseS = metricsS_log[:,3]
-fig,axs = plt.subplots(1,2,figsize=(15,5))
-axs[0].plot(ssimsS[1:])
-axs[0].set_title('ssims')
-axs[1].plot(mseS[1:])
-axs[1].set_title('mse')
-fig.suptitle('Metrics for syntethics', fontsize=16)
 
 #%%
 print('___________Experimentals_____________')
@@ -197,25 +162,26 @@ print(f"The maximum value of the mse metric is {np.round(max_val,2)} and the mod
 
 min_val, min_pos = min_value(mse)
 print(f"The minimum value of the mse metric is {np.round(min_val,2)} and the model is {listmodels[min_pos]}.")
-
-print('___________Syntethics________________')
-max_val, max_pos = max_value(ssimsS)
-print(f"The maximum value of the ssim metric is {np.round(max_val,2)} and the model is {listmodels[max_pos]}.")
-
-min_val, min_pos = min_value(ssimsS)
-print(f"The minimum value of the ssim metric is {np.round(min_val,2)} and the model is {listmodels[min_pos]}.")
-
-max_val, max_pos = max_value(mseS)
-print(f"The maximum value of the mse metric is {np.round(max_val,2)} and the model is {listmodels[max_pos]}.")
-
-min_val, min_pos = min_value(mseS)
-print(f"The minimum value of the mse metric is {np.round(min_val,2)} and the model is {listmodels[min_pos]}.")
-
-
-
-
-
-
-
-
-
+#%%
+model = listmodels[max_pos]
+model_loaded = tf.keras.models.load_model(os.path.join(modelsPath,model), 
+                                            compile=False)
+tomPredict = np.array(model_loaded.predict(tomccNorm, batch_size=1), dtype='float32')
+gc.collect()
+K.clear_session()
+tomPredictreordered = np.transpose(tomPredict, (1, 2, 0, 3))
+tomPredictFullScale = inverseLogScale(tomPredictreordered,imax,imin)
+#%%
+vmax = 100
+vmin = 50
+bscan = 0
+fig,axs = plt.subplots(ncols=3,nrows=1,figsize=(20,15))
+axs[0].imshow(dbscale(tomcc[:,:,bscan,:]),cmap='gray',vmax=vmax,vmin=vmin)
+axs[0].axis('off')
+axs[0].set_title('Input')
+axs[1].imshow(dbscale(tomPredictFullScale[:,:,bscan,:]),cmap='gray',vmax=vmax,vmin=vmin)
+axs[1].axis('off')
+axs[1].set_title('Neural Network')
+axs[2].imshow(dbscale(tom[:,:,bscan,:]),cmap='gray',vmax=vmax,vmin=vmin)
+axs[2].axis('off')
+axs[2].set_title('Target')
