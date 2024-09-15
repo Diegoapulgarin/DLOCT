@@ -4,36 +4,94 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from scipy.signal import hilbert
 import plotly.express as px
+import os
 #%%
-fs = 300
-f = 10
-w = 2*np.pi*f
-t = np.arange(0,1,1/fs)
-A = 1
-phase = 0
-srv = A*np.cos(w*t+phase)
-scv = A*np.exp(1j*(w*t+phase))
-real_signal = np.real(scv) 
-analytic_signal = hilbert(real_signal)
-imaginary_signal = analytic_signal.imag
+fs = 300  # Frecuencia de muestreo
+t = np.arange(0, 1, 1/fs)  # Vector de tiempo
 
-recscv = real_signal + 1j*imaginary_signal
+# Parámetros de las señales
+A1 = 1
+f1 = 10  # Primera frecuencia
+w1 = 2*np.pi*f1
+phase1 = 0
+
+A2 = 0.5
+f2 = -20  # Segunda frecuencia muy cercana a la primera
+w2 = 2*np.pi*f2
+phase2 = np.pi/8  # Desfase para crear interferencia
+
+# Generación de señales coseno con dos frecuencias distintas
+srv1 = A1*np.cos(w1*t+phase1)
+srv2 = A2*np.cos(w2*t+phase2)
+srv = srv1 + srv2  # Señal combinada
+
+# Señal compleja con dos frecuencias distintas
+scv = A1*np.exp(1j*(w1*t+phase1)) + A2*np.exp(1j*(w2*t+phase2))
+
+real_signal = np.real(scv) 
+analytic_signal = srv + 1j*hilbert(srv)
+# imaginary_signal = analytic_signal.imag
+
 fftsrv = abs(np.fft.fftshift(np.fft.fft(srv)))
 fftscv = abs(np.fft.fftshift(np.fft.fft(scv)))
-fftrec = abs(np.fft.fftshift(np.fft.fft(recscv)))
+fftrec = abs(np.fft.fftshift(np.fft.fft(analytic_signal)))
 srvfreq = np.fft.fftshift(np.fft.fftfreq((len(fftscv)),1/fs))
 
-fig = make_subplots(rows=4,cols=1)
-fig.add_trace(go.Line(y=srv,x=t,name='Cosine'),row=1,col=1)
-fig.add_trace(go.Line(y=np.real(scv),x=t,line=dict(dash='dash'),name='real part'),row=1,col=1)
-fig.add_trace(go.Line(y=np.imag(scv),x=t,line=dict(dash='dot'),name='imag part'),row=1,col=1)
-fig.add_trace(go.Line(y=imaginary_signal,x=t,line=dict(dash='dash'),name='recovered imaginarie signal'),row=1,col=1)
-# show fft
-fig.add_trace(go.Line(y=fftsrv,x=srvfreq,name='FFT cosine'),row=2,col=1)
-fig.add_trace(go.Line(y=fftrec,x=srvfreq,name='FFT recovered signal'),row=3,col=1)
-fig.add_trace(go.Line(y=fftscv,x=srvfreq,name='FFT exponential'),row=4,col=1)
+fig = make_subplots(rows=3, cols=1)
+
+# Añadir las trazas
+fig.add_trace(go.Scatter(y=srv, x=t, name='Señal Real'), row=1, col=1)
+fig.add_trace(go.Scatter(y=np.real(scv), x=t, line=dict(dash='dash'), name='Componente real de la señal compleja'), row=1, col=1)
+fig.add_trace(go.Scatter(y=np.imag(scv), x=t, line=dict(dash='dot'), name='Componente imaginaria de la señal compleja'), row=1, col=1)
+fig.add_trace(go.Scatter(y=fftsrv, x=srvfreq, name='FFT señal real'), row=2, col=1)
+fig.add_trace(go.Scatter(y=fftscv, x=srvfreq, name='FFT señal compleja'), row=3, col=1)
+
+# Actualizar el diseño para cambiar el tamaño y la fuente
+fig.update_layout(
+    font=dict(
+        family="Times New Roman",  # Cambiar la fuente
+        size=16,  # Cambiar el tamaño de la fuente
+    ),
+    legend=dict(
+        font=dict(
+            family="Times New Roman",
+            size=16
+        )
+    ),
+    xaxis_title="Tiempo",
+    yaxis_title="Amplitud",
+    
+    # Actualizar los ejes de las filas 2 y 3
+
+    xaxis2=dict(
+        title="Frecuencia",
+        title_font=dict(size=18),  # Tamaño de fuente para el título de los ejes
+        tickfont=dict(size=14)
+    ),
+    yaxis2=dict(
+        title="Magnitud FFT",
+        title_font=dict(size=18),
+        tickfont=dict(size=14)
+    ),
+    
+    xaxis3=dict(
+        title="Frecuencia",
+        title_font=dict(size=18),
+        tickfont=dict(size=14)
+    ),
+    yaxis3=dict(
+        title="Magnitud FFT",
+        title_font=dict(size=18),
+        tickfont=dict(size=14)
+    )
+)
+
+# Mostrar la gráfica
 fig.show()
-# fig.write_html('Basic_complex_problem.html')
+
+# Guardar el archivo HTML
+path = r'C:\Users\USER\OneDrive - Universidad EAFIT\Eafit\Trabajo de grado\Bibliografía complex conjugate mirror terms\imagenes_tesis'
+fig.write_html(os.path.join(path, 'Basic_complex_problem.html'))
 
 #%%
 
