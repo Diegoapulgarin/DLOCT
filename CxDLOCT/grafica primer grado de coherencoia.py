@@ -52,12 +52,19 @@ fig.add_trace(go.Scatter(x=tau, y=g_gaussian, mode='lines', name='Caótica Gauss
 
 # Update layout
 fig.update_layout(
-    # title='Primer Grado de Coherencia |g<sup>(1)</sup>|',
+
     xaxis_title='τ / τ<sub>c</sub>',
+
     yaxis_title='|g<sup>(1)</sup>|',
+
+    font=dict(family='Times New Roman', size=24),  # Set font type and size
+
     showlegend=True
+
 )
+
 
 # Display the plot
 fig.show()
-
+path = r'C:\Users\USER\OneDrive - Universidad EAFIT\Eafit\Trabajo de grado\Bibliografía complex conjugate mirror terms\imagenes_tesis'
+fig.write_html(os.path.join(path, 'grafica_de_g1.html'))

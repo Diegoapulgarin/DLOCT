@@ -104,10 +104,11 @@ def custom_gelu(x):
 
 #%%
 dataPath = r'E:\DLOCT\Experimental_Data_complex'
-tom = np.load(os.path.join(dataPath,'validationOpticNerve.npy'))
-tomcc = np.load(os.path.join(dataPath,'validationOpticNervecc.npy'))
-# tom = np.load(os.path.join(dataPath,'depthNail.npy'))
+# tom = np.load(os.path.join(dataPath,'validationOpticNerve.npy'))
+# tomcc = np.load(os.path.join(dataPath,'validationOpticNervecc.npy'))
+tom = np.load(os.path.join(dataPath,'depthNail.npy'))
 # tomcc = np.load(os.path.join(dataPath,'depthNailcc.npy'))
+tomcc = fft(ifft(tom,axis=0).real,axis=0)
 
 tomNorm,tmax,tmin = logScale(tom)
 tomNorm = np.transpose(tomNorm, (2, 0, 1, 3))
@@ -116,7 +117,7 @@ tomccNorm = np.transpose(tomccNorm, (2, 0, 1, 3))
 print('tomograms loaded')
 
 #%%
-modelsPath = r'E:\models\cxpix2pixcomplexdbscale4\models'
+modelsPath = r'E:\models\cxpix2pixcomplexdbscale3\models'
 listmodels = os.listdir(modelsPath)
 metrics = []
 metricsS = []
@@ -163,7 +164,7 @@ print(f"The maximum value of the mse metric is {np.round(max_val,2)} and the mod
 min_val, min_pos = min_value(mse)
 print(f"The minimum value of the mse metric is {np.round(min_val,2)} and the model is {listmodels[min_pos]}.")
 #%%
-model = listmodels[max_pos]
+model = listmodels[-11]
 model_loaded = tf.keras.models.load_model(os.path.join(modelsPath,model), 
                                             compile=False)
 tomPredict = np.array(model_loaded.predict(tomccNorm, batch_size=1), dtype='float32')
@@ -172,8 +173,8 @@ K.clear_session()
 tomPredictreordered = np.transpose(tomPredict, (1, 2, 0, 3))
 tomPredictFullScale = inverseLogScale(tomPredictreordered,imax,imin)
 #%%
-vmax = 100
-vmin = 50
+vmax = 120
+vmin = 65
 bscan = 0
 fig,axs = plt.subplots(ncols=3,nrows=1,figsize=(20,15))
 axs[0].imshow(dbscale(tomcc[:,:,bscan,:]),cmap='gray',vmax=vmax,vmin=vmin)
