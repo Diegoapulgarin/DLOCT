@@ -1,6 +1,7 @@
 #%%
 import numpy as np
 import plotly.graph_objects as go
+import os
 
 # Generate the x-axis
 x = np.linspace(-100, 100, 1000)
@@ -32,7 +33,8 @@ fig.show()
 
 #%%
 import numpy as np
-import plotly.graph_objects as go
+import plotly.graph_objs as go
+import os
 
 # Generate x-axis (normalized delay τ/τ_c)
 tau = np.linspace(-5, 5, 1000)
@@ -52,19 +54,30 @@ fig.add_trace(go.Scatter(x=tau, y=g_gaussian, mode='lines', name='Caótica Gauss
 
 # Update layout
 fig.update_layout(
-
     xaxis_title='τ / τ<sub>c</sub>',
-
     yaxis_title='|g<sup>(1)</sup>|',
-
     font=dict(family='Times New Roman', size=24),  # Set font type and size
-
-    showlegend=True
-
+    showlegend=True,
+    legend=dict(
+        font=dict(size=22),  # Increase font size of legend
+        orientation="h",  # Horizontal orientation
+        yanchor="bottom",  # Anchor at the bottom
+        y=-0.3,  # Position below the plot
+        xanchor="center",  # Center the legend
+        x=0.5,  # Position centered horizontally
+        bgcolor="rgba(255, 255, 255, 0.8)",  # Optional: Semi-transparent background for legend
+        borderwidth=1  # Optional: Border around the legend
+    ),
+    margin=dict(
+        t=50,  # Top margin
+        b=100,  # Bottom margin to provide space for the legend
+    )
 )
-
 
 # Display the plot
 fig.show()
+
+# Save the figure as an HTML file
 path = r'C:\Users\USER\OneDrive - Universidad EAFIT\Eafit\Trabajo de grado\Bibliografía complex conjugate mirror terms\imagenes_tesis'
 fig.write_html(os.path.join(path, 'grafica_de_g1.html'))
+
